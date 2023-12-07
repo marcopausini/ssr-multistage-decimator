@@ -1,4 +1,5 @@
 # Ignore build outputs
+prj_ssr_multistage_decimator/
 proj 
 *.log
 
