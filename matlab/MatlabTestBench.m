@@ -113,6 +113,10 @@ classdef MatlabTestBench
             if ~exist(obj.TestCaseDir, 'dir')
                 mkdir(obj.TestCaseDir);
             end
+            % write decimation factor file
+            fid = fopen(fullfile(obj.TestCaseDir, 'parameters.csv'), 'w');
+            fprintf(fid, '#decim_factor\n%d\n', obj.DecimFactor);
+            fclose(fid);
         end
 
         %% Load decimation filter based on decimation factor
