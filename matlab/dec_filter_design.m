@@ -70,17 +70,24 @@ function dec_filter_design
 
     % save filter coefficients as .coe file for use in Vivado
     writeCoefficients(hbFilter, ap_coef, '../data/hbFilter.coe');
+    
+    % cascade filter objects to create multi-stage decimator
+    dec2 = hbFilter;
+    dec4 = dsp.FilterCascade(dec2, dec2);
+    dec8 = dsp.FilterCascade(dec2, dec2, dec2);
+    dec16 = dsp.FilterCascade(dec2, dec2, dec2, dec2);
+    dec32 = dsp.FilterCascade(dec2, dec2, dec2, dec2, dec2);
+    dec64 = dsp.FilterCascade(dec2, dec2, dec2, dec2, dec2, dec2);
 
+    % save the filter objects for later use
+    save('filter_dec2.mat', 'dec2');
+    save('filter_dec4.mat', 'dec4');
+    save('filter_dec8.mat', 'dec8');
+    save('filter_dec16.mat', 'dec16');
+    save('filter_dec32.mat', 'dec32');
+    save('filter_dec64.mat', 'dec64');
 
     if plotFlag
-
-        % cascade filter objects to create multi-stage decimator
-        dec2 = hbFilter;
-        dec4 = dsp.FilterCascade(dec2, dec2);
-        dec8 = dsp.FilterCascade(dec2, dec2, dec2);
-        dec16 = dsp.FilterCascade(dec2, dec2, dec2, dec2);
-        dec32 = dsp.FilterCascade(dec2, dec2, dec2, dec2, dec2);
-        dec64 = dsp.FilterCascade(dec2, dec2, dec2, dec2, dec2, dec2);
 
         % Display and export the magnitude response
         decimatorPlots.dec2 = fvtool(dec2, 'Fs', [hbParams.FsIn], 'arithmetic', 'fixed');
