@@ -5,6 +5,7 @@ proj
 
 # Ignore generated simulation outputs
 data/**/*.txt
+data/**/*.png
 data/work
 
 # Ignore user-specific files like settings or preferences
