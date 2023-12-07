@@ -146,8 +146,8 @@ function writeCoefficients(filterObj, ap_coef, filePath)
     % Define header lines for the .coe file
     headerLines = {
         '; Sample filter coefficient .coe file';
-        'memory_initialization_radix=10;';
-        'memory_initialization_vector='
+        'radix=10;';
+        'coefdata='
     };
     
     % Open file
