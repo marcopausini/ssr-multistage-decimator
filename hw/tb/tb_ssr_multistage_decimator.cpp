@@ -15,6 +15,8 @@
 #include <cstdio>
 #include <vector>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 #include "../src/ssr_multistage_decimator.h"
 
@@ -41,58 +43,65 @@ int main(void)
     // Open the file to write the simulation results
     std::ofstream outputFile("work/output_csim.txt");
 
-    // flags to control the loop
-    bool endOfFileReached = false;
-
     // Read the input test vector file line by line
     std::string line;
 
     // Declare the input and output streams
-    hls::stream<cdata_vec_t> inputStream;
-    hls::stream<cdata_vec_t> outputStream;
+    hls::stream<cdata_t<ssr>> inputStream;
+    hls::stream<cdata_t<ssr>> outputStream;
 
     // Declare the input samples
-    cdata_vec_t inputSamples;
+    cdata_t<ssr> inputSamples;
+    cdata_t<ssr> outputSamples;
+
+    if (!inputFile.is_open())
+    {
+        std::cerr << "Error: could not open file." << std::endl;
+        return 1;
+    }
 
     // loop over the input test vector file
-    while (!endOfFileReached)
+    while (std::getline(inputFile, line))
     {
-        
         // Read a line from the input test vector file
-        std::getline(inputFile, line);
-        // Check if the end of the file has been reached
-        if (inputFile.eof())
-        {
-            endOfFileReached = true;
-            continue;
-        }
+        std::istringstream iss(line);
 
         // Parse the line
-        sscanf(line.c_str(), "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
-               &inputSamples[0].re, &inputSamples[0].im,
-               &inputSamples[1].re, &inputSamples[1].im,
-               &inputSamples[2].re, &inputSamples[2].im,
-               &inputSamples[3].re, &inputSamples[3].im,
-               &inputSamples[4].re, &inputSamples[4].im,
-               &inputSamples[5].re, &inputSamples[5].im,
-               &inputSamples[6].re, &inputSamples[6].im,
-               &inputSamples[7].re, &inputSamples[7].im);
-
-        // Call the DUT
+        for (size_t i = 0; i < ssr; ++i)
+        {
+            if (!(iss >> inputSamples.re[i] >> inputSamples.im[i]))
+            {
+                std::cerr << "Error: failed to parse input." << std::endl;
+                break;
+            }
+        }
+       
+        // Write the input sample to the input stream
         inputStream.write(inputSamples);
-        ssr_multistage_decimator(inputStream, outputStream, dec_factor);
-        // Read the output test vector
-        cdata_vec_t outputSample = outputStream.read();
 
-        // Write the output sample to the output file
-        outputFile << std::setw(6) << outputSample[0].re << " " << std::setw(6) << outputSample[0].im << " "
-                   << std::setw(6) << outputSample[1].re << " " << std::setw(6) << outputSample[1].im << " "
-                   << std::setw(6) << outputSample[2].re << " " << std::setw(6) << outputSample[2].im << " "
-                   << std::setw(6) << outputSample[3].re << " " << std::setw(6) << outputSample[3].im << " "
-                   << std::setw(6) << outputSample[4].re << " " << std::setw(6) << outputSample[4].im << " "
-                   << std::setw(6) << outputSample[5].re << " " << std::setw(6) << outputSample[5].im << " "
-                   << std::setw(6) << outputSample[6].re << " " << std::setw(6) << outputSample[6].im << " "
-                   << std::setw(6) << outputSample[7].re << " " << std::setw(6) << outputSample[7].im << std::endl;
+        // Call the top-level function
+        ssr_multistage_decimator(inputStream, outputStream, dec_factor);
+
+        // Read the output sample from the output stream
+        outputSamples = outputStream.read();
+        
+        // scale the output samples and write them to the output file
+        for (size_t i = 0; i < ssr; ++i)
+        {
+            // Convert to integer by multiplying with (1 << frac_bits). and write to file
+            int intValueRe = static_cast<int>(outputSamples.re[i] * (1 << frac_bits));
+            int intValueIm = static_cast<int>(outputSamples.im[i] * (1 << frac_bits));
+
+            outputFile << std::setw(6) << intValueRe << " ";
+            outputFile << std::setw(6) << intValueIm;
+
+            if (i < ssr - 1)
+            {
+                outputFile << " "; // Add space between numbers except after the last one
+            }
+        }
+        outputFile << std::endl;
+
     }
 }
 
