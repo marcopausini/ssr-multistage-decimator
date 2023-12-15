@@ -12,60 +12,43 @@
 #ifndef SSR_MULTISTAGE_DECIMATOR_H_
 #define SSR_MULTISTAGE_DECIMATOR_H_
 
-#include <fstream>
-#include <iostream>
-#include <iomanip>
-#include <cstdlib>
-#include <cmath>
-#include <stdexcept>
 
 #include <hls_stream.h>
-#include "hls_vector.h"
+#include "ap_fixed.h"
 #include "ap_int.h"
 
 #include "hls_fir.h"
 
 using namespace std;
 
-// filter coefficients data type: s18.18
-typedef ap_int<18> coef_t;
-
 // decimation factor data type:
-typedef ap_int<8> dec_factor_t;
+typedef ap_uint<8> dec_factor_t;
 
-// one sample: input/output data type: complex s16.15
-typedef ap_int<16> data_t;
-typedef struct
-{
-    data_t re;
-    data_t im;
-} cdata_t;
+// input/output data types: complex s16.15
+constexpr int num_bits = 16;
+constexpr int frac_bits = 15;
+typedef ap_fixed<num_bits, num_bits - frac_bits> fixed_point_t;
+// define template for array of complex data type
+template <size_t N>
+struct cdata_t {
+    fixed_point_t re[N]; // Array of N elements for the real part
+    fixed_point_t im[N]; // Array of N elements for the imaginary part
+};
 
-
-// Parallelism Factor - or Hardware Oversampling Rate
-const int8_t P = 8;
-
-// multiple samples: input/output data type:
-typedef hls::vector<data_t, P> data_vec_t;
-typedef hls::vector<cdata_t, P> cdata_vec_t;
-//
-typedef hls::vector<data_t, 4> data_vec4_t;
-typedef hls::vector<cdata_t, 4> cdata_vec4_t;
-//
-typedef hls::vector<data_t, 2> data_vec2_t;
-typedef hls::vector<cdata_t, 2> cdata_vec2_t;
-//
-//typedef hls::vector<data_t, 1> data_vec1_t;
+// Super-Sample Rate => Parallelism Factor - or Hardware Oversampling Rate
+const size_t ssr = 8;
 
 // top level function
-void ssr_multistage_decimator(hls::stream<cdata_vec_t> &in, hls::stream<cdata_vec_t> &out, dec_factor_t dec_factor);
-// from 1280_to_640
-void ssr_dec2(hls::stream<cdata_vec_t> &in, hls::stream<cdata_vec4_t> &out);
-// from 640_to_320
-void ssr_dec4(hls::stream<cdata_vec4_t> &in, hls::stream<cdata_vec2_t> &out);
-// from 320_to_160
-void ssr_dec8(hls::stream<cdata_vec2_t> &in, hls::stream<cdata_t> &out);
-// from 160_to_80 + from 80_to_40 + from 40_to_20 
-void hbf_dec(hls::stream<cdata_t> &in, hls::stream<cdata_t> &out);
+void ssr_multistage_decimator(hls::stream<cdata_t<ssr>> &in, hls::stream<cdata_t<ssr>> &out, dec_factor_t dec_factor);
+
+// from 1280_to_640 (decimation factor = 2)
+//void ssr_dec2(hls::stream<data_vec8_t> &in, hls::stream<data_vec4_t> &out);
+void hbf_ssr8(hls::stream<cdata_t<ssr>> &in, hls::stream<cdata_t<ssr/2>> &out);
+// from 640_to_320 (decimation factor = 4)
+void hbf_ssr4(hls::stream<cdata_t<ssr/2>> &in, hls::stream<cdata_t<ssr/4>> &out);
+// from 320_to_160 (decimation factor = 8)
+void hbf_ssr2(hls::stream<cdata_t<ssr/4>> &in, hls::stream<cdata_t<ssr/8>> &out);
+// from 160_to_80 + from 80_to_40 + from 40_to_20 (decimation factor = 16,32,64)
+void hbf_ssr1(hls::stream<cdata_t<1>> &in, hls::stream<cdata_t<1>> &out);
 
 #endif // SSR_MULTISTAGE_DECIMATOR
