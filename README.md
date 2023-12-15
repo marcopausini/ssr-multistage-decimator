@@ -99,3 +99,5 @@ By structuring it in this way, the README.md file becomes more organized and use
 Feel free to explore the directories and their contents for a deeper understanding of the project's hardware design and structure.
 
 The decimation factor should be selected based on the input signal bandwidth desired output rate for your specific application.
+
+## Synthesis and Implementation

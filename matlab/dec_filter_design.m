@@ -149,7 +149,7 @@ function writeCoefficients(filterObj, ap_coef, filePath)
     % The .coe file format is typically used with Xilinx Vivado.
     
     % Extract the filter coefficients from the filter object - and quantize
-    coeffs = convertToFxpnt(filterObj.Numerator, 's', ap_coef.width, ap_coef.frac);
+    coeffs = convertToFxpnt(filterObj.Numerator, 's', ap_coef.width, ap_coef.frac).*2^ap_coef.frac;
     
     % Define header lines for the .coe file
     headerLines = {
@@ -176,10 +176,10 @@ function writeCoefficients(filterObj, ap_coef, filePath)
     for i = 1:length(coeffs)
         % Add a comma after each coefficient except the last one
         if i ~= length(coeffs)
-            fprintf(fid, '%f,\n', coeffs(i));
+            fprintf(fid, '%d,\n', coeffs(i));
         else
             % Do not add a comma after the last coefficient
-            fprintf(fid, '%f;', coeffs(i));
+            fprintf(fid, '%d;', coeffs(i));
         end
     end
     

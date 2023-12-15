@@ -239,10 +239,9 @@ classdef MatlabTestBench
             % load output signal from C simulation
             data = load(fullfile(obj.TestCaseDir, 'output_csim.txt'));
             % convert to complex
-            %y = data(:, 1:2:end) + 1i * data(:, 2:2:end);
-            y = data;
+            y = data(:, 1:2:end) + 1i * data(:, 2:2:end);
             % scale to [-1, 1]
-           % y = y / 2 ^ obj.ap_data.f;
+            y = y ./ 2 ^ obj.ap_data.f;
             decFactor = obj.DecimFactor;
             switch decFactor
                 case 1

@@ -1,10 +1,11 @@
 ##
 # @file run.tcl
-# @brief TCL script for setting up and running simulation, synthesis and implementation
-#        of the ssr_multistage_decimator HLS project.
-#
+# @brief TCL script to configure the project settings for the ssr_multistage_decimator design using HLS tool. 
+#        It sets the project, solution, device settings, adds source and testbench files, specifies top module,
+#        adjusts clock settings, run synthesis and implementation, and exports the design.
 #
 # @usage vitis_hls -f run.tcl
+#        vitis_hls -i -> interactive mode, then type "source run.tcl"
 #        vitis-run --mode hls --tcl run.tcl
 #
 #
@@ -13,6 +14,9 @@
 # co-simulation, and exporting the design.
 #
 ##
+
+set CSYNTH 1
+set EXPORT 0
 
 ### default setting
 set Project     prj_ssr_multistage_decimator
@@ -36,7 +40,7 @@ set WorkDir "$TopDir/data/work"
 
 # Add the file for synthesis
 add_files $TopDir/hw/src/ssr_multistage_decimator.cpp 
-add_files $TopDir/hw/src/ssr_dec2.cpp
+add_files $TopDir/hw/src/hb_filters.cpp
 
 # Add testbench files for co-simulation
 add_files -tb  $TopDir/hw/tb/tb_ssr_multistage_decimator.cpp
@@ -67,9 +71,6 @@ set_clock_uncertainty $Uncertainty
 
 # IO interface
 
-# The function has a pipelined architecture and accepts new inputs every clock cycle
-set_directive_pipeline -II 1  ssr_multistage_decimator
-
 # Inform the tool of the variables not inter dependent
 
 # Print scheduling information for debugging
@@ -78,22 +79,25 @@ config_schedule -verbose
 #################
 # C SIMULATION
 #################
-source run_csim.tcl
+# source run_csim.tcl
 
 #############
 # SYNTHESIS #
 #############
-#csynth_design
+if {$CSYNTH == 1} {
+    csynth_design
+}
 
 #################
 # CO-SIMULATION #
 #################
-#cosim_design -rtl verilog -trace_level port
+# source run_csim.tcl
 
 ##################
 # IMPLEMENTATION #
 ##################
-#export_design -evaluate verilog -format ipxact
-
+if {$EXPORT == 1} {
+    export_design -evaluate verilog -format ip_catalog -flow impl
+}
 
 #exit

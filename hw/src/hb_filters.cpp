@@ -31,8 +31,8 @@ struct hbf_ssr8_config : hls::ip_fir::params_t
 
     static const unsigned num_coeffs = 31;
     static const unsigned coeff_sets = 1;
-    static const unsigned input_length = 8;  // num_coeffs;
-    static const unsigned output_length = 4; // num_coeffs;
+    static const unsigned input_length = 2;  // num_coeffs;
+    static const unsigned output_length = 1; // num_coeffs;
     static const unsigned num_channels = 1;
 
     static const unsigned total_num_coeff = num_coeffs * coeff_sets;
@@ -45,9 +45,11 @@ struct hbf_ssr8_config : hls::ip_fir::params_t
     static const unsigned decim_rate = 2;
     static const unsigned zero_pack_factor = 1;
     static const unsigned chan_seq = hls::ip_fir::basic;
+    //static const unsigned rate_specification = hls::ip_fir::frequency; //input_period
     static const unsigned rate_specification = hls::ip_fir::input_period;
     static constexpr double sample_period = 0.125;
-    static constexpr double sample_frequency = 1280;
+    //static const unsigned sample_period = 1;
+    static constexpr double sample_frequency = 0.125; //300.0*8; //1280;
 
     static const unsigned quantization = hls::ip_fir::quantize_only;
     static const bool best_precision = true;
@@ -74,16 +76,20 @@ const double hbf_ssr8_config::coeff_vec[hbf_ssr8_config::total_num_coeff] = {
     0.015862, 0.000000, -0.008293, 0.000000, 0.003822, 0.000000,
     -0.001503};
 
-
-template <typename T, size_t P>
-void unpackInputDataStructure(const T& input, typename T::value_type (&xi)[P], typename T::value_type (&xq)[P]) {
+template <size_t ssr>
+void unpackInputDataStructure(cdata_t<ssr> &input, fixed_point_t (&xi)[ssr], fixed_point_t (&xq)[ssr])
+{
+#pragma HLS disaggregate variable = input
+xi = input.re;
+xq = input.im;
     // Unpack the input data structure into real and imag vectors for the filter input
-    for (size_t i = 0; i < P; ++i) {
-        // Unroll this loop to copy all elements in parallel
-        #pragma HLS unroll
-        xi[i] = input.re[i];
-        xq[i] = input.im[i];
-    }
+/*   for (size_t i = 0; i < ssr; ++i) {
+       // Unroll this loop to copy all elements in parallel
+       #pragma HLS unroll
+       xi[i] = input.re[i];
+       xq[i] = input.im[i];
+   }
+   */
 }
 
 template <size_t ssr>
@@ -92,14 +98,16 @@ void read_input_stream(hls::stream<cdata_t<ssr>> &in, fixed_point_t (&xi)[ssr], 
     // Read input data
     cdata_t<ssr> input = in.read();
 
+
     // Unpack the input data structure into real and imag vectors for the filter input
-    for (int i = 0; i < ssr; i++)
-    {
-    // Unroll this loop to copy all elements in parallel
-    #pragma HLS unroll
-        xi[i] = input.re[i];
-        xq[i] = input.im[i];
-    }
+   for (int i = 0; i < ssr; i++)
+   {
+   // Unroll this loop to copy all elements in parallel
+   #pragma HLS unroll
+       xi[i] = input.re[i];
+       xq[i] = input.im[i];
+   }
+
 }
 
 template <size_t ssr>
@@ -136,7 +144,9 @@ void hbf_ssr8(hls::stream<cdata_t<ssr>> &in, hls::stream<cdata_t<ssr / 2>> &out)
 
     // FIR SSR Halfband filter instantiation
     static hls::FIR<hbf_ssr8_config> filter;
-
+    
+   // cdata_t<ssr> input = in.read();
+   // fixed_point_t a;
     //==================================================
     // Dataflow process
     //==================================================
@@ -148,5 +158,5 @@ void hbf_ssr8(hls::stream<cdata_t<ssr>> &in, hls::stream<cdata_t<ssr / 2>> &out)
     // pack the output data structure from real and imag vectors
     write_output_stream<ssr / 2>(out, yi, yq);
     //==================================================
-    
+
 }
