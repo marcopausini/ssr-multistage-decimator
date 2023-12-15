@@ -49,26 +49,27 @@ classdef MatlabTestBench
             % create input/output test vector file  for the C/RTL simulation
             obj = generateSimTestVectors(obj);
             % plot and save spectrogram of the input and output signals
-           % obj = plotSpectrogram(obj);
-           obj = plotPowerSpectrum(obj);
+            % obj = plotSpectrogram(obj);
+            obj = plotPowerSpectrum(obj);
         end
 
         %% Validate C Simulation
         function obj = validateCsim(obj)
-            % Implementation of validateCsim method
-            % This function would compare the object's Output property to
-            % OutputC to validate that the C simulation is working as
-            % expected.
+            % load test vectors if not available
+            if isempty(obj.Input)
+                obj = loadInput(obj);
+            end
+            if isempty(obj.Output)
+                obj = loadReferenceOutput(obj);
+            end
+            % load the C simulation outputs
+            obj = loadOutputCsim(obj);
+            % compare the C simulation outputs with the reference outputs
+            obj = compareResults(obj);
 
-            % Pseudocode:
-            % if all(abs(obj.Output - obj.OutputC) < some_tolerance)
-            %     fprintf('C Simulation Validation Passed\n');
-            % else
-            %     fprintf('C Simulation Validation Failed\n');
-            % end
+            % compare frequency and power of the C simulation outputs with the reference outputs
+            obj = compareSignalFreqPower(obj);
 
-            % An actual implementation would define 'some_tolerance' and
-            % use appropriate numeric comparisons.
         end
     end
 
@@ -136,7 +137,7 @@ classdef MatlabTestBench
                     data = load('filter_dec8.mat');
                     obj.Filter = data.dec8;
                 case 16
-                    data = load('filter_dec16.mat');    
+                    data = load('filter_dec16.mat');
                     obj.Filter = data.dec16;
                 case 32
                     data = load('filter_dec32.mat');
@@ -188,37 +189,172 @@ classdef MatlabTestBench
             % save output signal as a .mat file
             save(fullfile(obj.TestCaseDir, 'output.mat'), 'output');
         end
-        
+
         %% Generate input/output test vector file  for the C/RTL simulation
         function obj = generateSimTestVectors(obj)
             % Implementation of generateSimTestVectors method
-            % parallelize input and output signals = each row contains obj.Parallelism samples 
+            % parallelize input and output signals = each row contains obj.Parallelism samples
             x = reshape(obj.Input, obj.Parallelism, []);
             x = transpose(x);
             % convert to integer
-            x = x * 2^obj.ap_data.f;
+            x = x * 2 ^ obj.ap_data.f;
             % split and interleave real and imaginary parts
-            input = zeros(size(x,1), 2*size(x,2));
-            input(:,1:2:end) = real(x);
-            input(:,2:2:end) = imag(x);
+            input = zeros(size(x, 1), 2 * size(x, 2));
+            input(:, 1:2:end) = real(x);
+            input(:, 2:2:end) = imag(x);
             % save input test vector file for the C simulation
-            dlmwrite([obj.TestCaseDir,'/input_test_vector.txt'], input, 'delimiter', '\t');
+            dlmwrite([obj.TestCaseDir, '/input_test_vector.txt'], input, 'delimiter', '\t');
             % parallelize output signal = each row contains obj.Parallelel/obj.DecimationFactor samples
-            y = reshape(obj.Output, ceil(obj.Parallelism/obj.DecimFactor), []);
+            y = reshape(obj.Output, ceil(obj.Parallelism / obj.DecimFactor), []);
             y = transpose(y);
             % convert to integer
-            y = y * 2^obj.ap_data.f;
+            y = y * 2 ^ obj.ap_data.f;
             % split and interleave real and imaginary parts
-            yy = zeros(size(y,1), 2*size(y,2));
-            yy(:,1:2:end) = real(y);
-            yy(:,2:2:end) = imag(y);
+            yy = zeros(size(y, 1), 2 * size(y, 2));
+            yy(:, 1:2:end) = real(y);
+            yy(:, 2:2:end) = imag(y);
             % pad with zeros to get 2*obj.Parallelism columns
-            output = zeros(size(yy,1), 2*obj.Parallelism);
-            output(:,1:size(yy,2)) = yy;
+            output = zeros(size(yy, 1), 2 * obj.Parallelism);
+            output(:, 1:size(yy, 2)) = yy;
             % save output test vector file for the C simulation
-            dlmwrite([obj.TestCaseDir,'/output_test_vector.txt'], output, 'delimiter', '\t');
+            dlmwrite([obj.TestCaseDir, '/output_test_vector.txt'], output, 'delimiter', '\t');
         end
-        
+
+        function obj = loadInput(obj)
+            % Implementation of loadInput method
+            % load input signal
+            data = load(fullfile(obj.TestCaseDir, 'input.mat'));
+            obj.Input = data.input;
+        end
+
+        function obj = loadReferenceOutput(obj)
+            % Implementation of loadReferenceOutput method
+            % load output signal
+            data = load(fullfile(obj.TestCaseDir, 'output.mat'));
+            obj.Output = data.output;
+        end
+
+        function obj = loadOutputCsim(obj)
+            % Implementation of loadOutputCsim method
+            % load output signal from C simulation
+            data = load(fullfile(obj.TestCaseDir, 'output_csim.txt'));
+            % convert to complex
+            %y = data(:, 1:2:end) + 1i * data(:, 2:2:end);
+            y = data;
+            % scale to [-1, 1]
+           % y = y / 2 ^ obj.ap_data.f;
+            decFactor = obj.DecimFactor;
+            switch decFactor
+                case 1
+                    numCols = 8;
+                case 2
+                    numCols = 4;
+                case 4
+                    numCols = 2;
+                case 8
+                    numCols = 1;
+                case 16
+                    numCols = 1;
+                case 32
+                    numCols = 1;
+                case 64
+                    numCols = 1;
+            end
+            % get only valid samples
+            y = y(:, 1:numCols);
+            % read matrix row by row into column vector
+            y = y.';
+            y = y(:);
+            % save output signal from C simulation
+            obj.OutputC = y;
+        end
+
+        function obj = compareResults(obj)
+            % Ensure that both signals are available
+            if isempty(obj.Output) || isempty(obj.OutputC)
+                error('Both Output and OutputC must be set before comparison.');
+            end
+
+            % Determine the threshold for acceptable error (this will be design-specific)
+            errorThreshold = 2; % Define an appropriate threshold value
+
+            % Print the header with the added 'Verdict' column
+            fprintf('\n%-20s %-10s %-7s\n', 'Num Errors', 'Max Error', 'Verdict');
+
+            % get the output and reshape it as a column vector
+            y = obj.Output.*2^obj.ap_data.f;
+            y = y(:);
+            % get the C output and reshape it as a column vector
+            yc = obj.OutputC.*2^obj.ap_data.f;
+            yc = yc(:);
+            % Perform comparison - this is an example using absolute error
+            if length(y) ~= length(yc)
+                fprintf('The length of the reference output and the C output are different.\n');
+            else
+                errorMetric = abs(y - yc);
+                % Number of errors
+                numErrors = sum(errorMetric > errorThreshold);
+                % Determine verdict
+                if numErrors > 0
+                    verdict = 'FAIL';
+                else
+                    verdict = 'PASS';
+                end
+                % Print the results with column alignment including the 'Verdict'
+                fprintf('%-20d %-10.2f %-7s\n', numErrors, max(errorMetric), verdict);
+                % Plot the error, if errors are detected and number of errors exceeds 1000
+                if numErrors > 1
+                    % Ask the user if he wants to plot the error
+                    prompt = 'Do you want to plot the error? Y/N [Y]: ';
+                    str = input(prompt, 's');
+                    if strcmp(str, 'Y') || strcmp(str, 'y') || isempty(str)
+                        figure;
+                        plot(errorMetric);
+                        title('Error between Reference Output and RTL Simulation Output');
+                        xlabel('Sample Number');
+                        ylabel('Absolute Error');
+                        figure;
+                        subplot(2, 1, 1); plot(real(y)); hold on; plot(real(yc),'r'); hold off; title('Real Part');
+                        subplot(2, 1, 2); plot(imag(y)); hold on; plot(imag(yc),'r'); hold off; title('Imaginary Part');
+                    end
+                end
+            end
+        end
+
+        %% New Method to compare C/RTL outputs with reference outputs
+        function obj = compareSignalFreqPower(obj)
+            % Ensure that both signals are available
+            if isempty(obj.Output) || isempty(obj.OutputC)
+                error('Both Output and OutputC must be set before comparison.');
+            end
+
+            % Print the header with added 'powerDiff' and 'freqDiff'
+            fprintf('\n%-15s %-15s %-15s %-15s %-15s %-15s %-15s %-15s\n', ...
+                'powerInput [dB]', 'powerRef [dB]', 'powerC [dB]', ...
+                'powerDiff [dB]', 'FreqInput [MHz]', 'FreqRef [MHz]', 'FreqC [MHz]', 'freqDiff [MHz]');
+
+            % Compute the power of the input in dB
+            powerInput = 10 * log10(mean(abs(obj.Input) .^ 2));
+            % Compute the power of the reference output in dBFS
+            powerRef = 10 * log10(mean(abs(obj.Output) .^ 2));
+            % Compute the power of the C output in dB
+            powerC = 10 * log10(mean(abs(obj.OutputC) .^ 2));
+            % Compute the power difference in dB
+            powerDiff = powerRef - powerC;
+            % Compute the frequency of the input in MHz
+            freqInput = meanfreq(obj.Input, obj.InputSampleRate);
+            % Compute the frequency of the reference output in MHz
+            freqRef = meanfreq(obj.Output, obj.OutputSampleRate);
+            % Compute the frequency of the C output in MHz
+            freqC = meanfreq(obj.OutputC, obj.OutputSampleRate);
+            % Compute the frequency difference in MHz
+            freqDiff = freqRef - freqC;
+            % Print the results with column alignment including 'powerDiff' and 'freqDiff'
+            fprintf('%-15.2f %-15.2f %-15.2f %-15.2f %-15.2f %-15.2f %-15.2f %-15.2f\n', ...
+                powerInput, powerRef, powerC, powerDiff, freqInput, freqRef, freqC, freqDiff);
+
+        end
+
         %% plot and save power spectrum of the input and output signals
         function obj = plotPowerSpectrum(obj)
             figure;
@@ -244,7 +380,7 @@ classdef MatlabTestBench
         %% plot and save spectrogram of the input and output signals
         function obj = plotSpectrogram(obj)
             % Implementation of plotSpectrogram method
-            
+
             figure;
             opts = "'spectrogram','OverlapPercent',99";
             data1 = obj.Input;
@@ -266,7 +402,6 @@ classdef MatlabTestBench
             ylabel('Frequency (Hz)');
             grid on;
 
-            
             saveas(gcf, fullfile(obj.TestCaseDir, 'input_output_spectrogram.png'));
         end
     end

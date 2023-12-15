@@ -67,16 +67,16 @@ if usecase == 'a'
     end
     % create new test bench object and generate test vectors
     tb = MatlabTestBench(decimationFactor, signalTypes{idx});
-    fprintf('generate test vectors\n');
+    fprintf('\ngenerate test vectors\n');
     tb = tb.generateTestVectors()
 elseif usecase == 'b'
     % check if test bench object exists
     if ~exist('tb', 'var')
         fprintf('no test bench object found. Create a new onw\n');
-        tb = MatlabTestBench(testcase)
+        tb = MatlabTestBench(decimationFactor, signalTypes{idx})
     end
     % validate C simulation
-    fprintf('validate C simulation\n');
+    fprintf('\nvalidate C simulation\n');
     tb = tb.validateCsim();
 end
 %
