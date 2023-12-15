@@ -5,6 +5,7 @@
  * @brief design the decimation filter
  *
  * Design, measure and plot the frequency response of the multi-stage decimation filter
+ * Save the filter coefficients as a .coe file for use in Vivado
  *
  * @author Marco Pausini
  * @date YYYY-MM-DD
@@ -147,8 +148,8 @@ function writeCoefficients(filterObj, ap_coef, filePath)
     % This function writes the filter coefficients to a .coe file.
     % The .coe file format is typically used with Xilinx Vivado.
     
-    % Extract the filter coefficients from the filter object
-    coeffs = convertToFxpnt(filterObj.Numerator, 's', ap_coef.width, ap_coef.frac) * 2 ^ ap_coef.frac;
+    % Extract the filter coefficients from the filter object - and quantize
+    coeffs = convertToFxpnt(filterObj.Numerator, 's', ap_coef.width, ap_coef.frac);
     
     % Define header lines for the .coe file
     headerLines = {
@@ -175,10 +176,10 @@ function writeCoefficients(filterObj, ap_coef, filePath)
     for i = 1:length(coeffs)
         % Add a comma after each coefficient except the last one
         if i ~= length(coeffs)
-            fprintf(fid, '%d,\n', coeffs(i));
+            fprintf(fid, '%f,\n', coeffs(i));
         else
             % Do not add a comma after the last coefficient
-            fprintf(fid, '%d;', coeffs(i));
+            fprintf(fid, '%f;', coeffs(i));
         end
     end
     
