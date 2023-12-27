@@ -1,6 +1,6 @@
 # Ignore build outputs
 prj_ssr_multistage_decimator/
-proj 
+proj
 *.log
 
 # Ignore generated simulation outputs
@@ -43,8 +43,8 @@ matlab/**/mex*/
 *.dep
 *.d
 *.map
-*.str 
-*copy* 
+*.str
+*copy*
 # Ignore all binaries
 */**/bin/
 */**/obj/
@@ -57,3 +57,4 @@ matlab/**/mex*/
 *.vscode/
 *.idea/
 *.DS_Store
+ssr-multistage-decimator.code-workspace
