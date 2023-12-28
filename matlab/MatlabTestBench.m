@@ -26,6 +26,12 @@ classdef MatlabTestBench
         Parallelism = 8; % Parallelism Factor or Hardware Oversampling Rate
         NumOutputSamples = 64; % Number of output samples - must be a multiple of Parallelism
         Amplitude = 0.7; % Amplitude of the input test signal
+        % Fixed-point parameters
+        coef_t
+        datain_t
+        mult_t
+        dataout_t
+        acc_t
         ap_data = struct('w', 16, 'f', 15, 'type', 'signed'); % Data type for input and output signals
         ap_coef = struct('w', 18, 'f', 17, 'type', 'signed'); % Data type for coefficients
         seed = 123; % seed for random number generator
@@ -34,6 +40,22 @@ classdef MatlabTestBench
     methods
         %% Constructor
         function obj = MatlabTestBench(DecimationFactor, SignalType)
+            % -------------------------
+            % Fixed-point parameters
+            % -------------------------
+            obj.coef_t.w = 18; % word length
+            obj.coef_t.f = 17; % fraction length
+            obj.datain_t.w = 16; % word length
+            obj.datain_t.f = 15; % fraction length
+            obj.mult_t.w = 34; % word length
+            obj.mult_t.f = 32; % word length
+            obj.acc_t.w = 40;
+            obj.acc_t.f = 32;
+            obj.dataout_t.w = 16; % word length
+            obj.dataout_t.f = 14; % fraction length
+            % -----------------------------
+            % get the test case parameters
+            % -----------------------------
             obj.DecimFactor = DecimationFactor;
             obj.SignalType = SignalType;
             obj = setTestCase(obj);
@@ -173,7 +195,7 @@ classdef MatlabTestBench
                     error('Signal type "%s" not supported. Valid types: chirp, exponential, random', obj.SignalType);
             end
             % convert to fixed point
-            input = convertToFxpnt(input, 's', obj.ap_data.w, obj.ap_data.f);
+            input = convertToFxpnt(input, 's', obj.datain_t.w, obj.datain_t.f);
             obj.Input = input;
             % save input signal as a .mat file
             save(fullfile(obj.TestCaseDir, 'input.mat'), 'input');
@@ -184,7 +206,7 @@ classdef MatlabTestBench
             % Implementation of generateReferenceOutput method
             output = obj.Filter(obj.Input);
             % convert to fixed point
-            output = convertToFxpnt(output, 's', obj.ap_data.w, obj.ap_data.f);
+            output = convertToFxpnt(output, 's', obj.dataout_t.w, obj.dataout_t.f);
             obj.Output = output;
             % save output signal as a .mat file
             save(fullfile(obj.TestCaseDir, 'output.mat'), 'output');
@@ -197,7 +219,7 @@ classdef MatlabTestBench
             x = reshape(obj.Input, obj.Parallelism, []);
             x = transpose(x);
             % convert to integer
-            x = x * 2 ^ obj.ap_data.f;
+            x = x * 2 ^ obj.datain_t.f;
             % split and interleave real and imaginary parts
             input = zeros(size(x, 1), 2 * size(x, 2));
             input(:, 1:2:end) = real(x);
@@ -208,7 +230,7 @@ classdef MatlabTestBench
             y = reshape(obj.Output, ceil(obj.Parallelism / obj.DecimFactor), []);
             y = transpose(y);
             % convert to integer
-            y = y * 2 ^ obj.ap_data.f;
+            y = y * 2 ^ obj.dataout_t.f;
             % split and interleave real and imaginary parts
             yy = zeros(size(y, 1), 2 * size(y, 2));
             yy(:, 1:2:end) = real(y);
@@ -217,7 +239,7 @@ classdef MatlabTestBench
             output = zeros(size(yy, 1), 2 * obj.Parallelism);
             output(:, 1:size(yy, 2)) = yy;
             % save output test vector file for the C simulation
-            dlmwrite([obj.TestCaseDir, '/output_test_vector.txt'], output, 'delimiter', '\t');
+            dlmwrite([obj.TestCaseDir, '/output_ref.txt'], output, 'delimiter', '\t');
         end
 
         function obj = loadInput(obj)
@@ -238,10 +260,16 @@ classdef MatlabTestBench
             % Implementation of loadOutputCsim method
             % load output signal from C simulation
             data = load(fullfile(obj.TestCaseDir, 'output_csim.txt'));
+            % first column is tvalid
+            tvalid = data(:,1);
+            obj.TvalidC = tvalid;
+            % get only valid samples
+            data = data(:,2:end);
+            data = data(tvalid == 1, :);
             % convert to complex
             y = data(:, 1:2:end) + 1i * data(:, 2:2:end);
             % scale to [-1, 1]
-            y = y ./ 2 ^ obj.ap_data.f;
+            y = y ./ 2 ^ obj.dataout_t.f;
             decFactor = obj.DecimFactor;
             switch decFactor
                 case 1
@@ -281,10 +309,10 @@ classdef MatlabTestBench
             fprintf('\n%-20s %-10s %-7s\n', 'Num Errors', 'Max Error', 'Verdict');
 
             % get the output and reshape it as a column vector
-            y = obj.Output.*2^obj.ap_data.f;
+            y = obj.Output.*2^obj.dataout_t.f;
             y = y(:);
             % get the C output and reshape it as a column vector
-            yc = obj.OutputC.*2^obj.ap_data.f;
+            yc = obj.OutputC.*2^obj.dataout_t.f;
             yc = yc(:);
             % Perform comparison - this is an example using absolute error
             if length(y) ~= length(yc)
