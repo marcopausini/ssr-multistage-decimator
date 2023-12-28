@@ -70,6 +70,15 @@ set_clock_uncertainty $Uncertainty
 ##############
 
 # IO interface
+set_directive_interface -mode ap_ctrl_none ssr_multistage_decimator
+set_directive_interface -mode ap_none ssr_multistage_decimator tvalid_i
+set_directive_interface -mode ap_none ssr_multistage_decimator tdata_i
+set_directive_interface -mode ap_none ssr_multistage_decimator tvalid_o
+set_directive_interface -mode ap_none ssr_multistage_decimator tdata_o
+
+# The function has a pipelined architecture and accepts new inputs every clock cycle
+set_directive_pipeline -II 1  ssr_multistage_decimator
+
 
 # Inform the tool of the variables not inter dependent
 

@@ -12,11 +12,22 @@
 #
 ##
 
+# open project and keep/remove any exisiting data
+set resetProject true
+
 set CSIM true
 set COSIM false
 
 # choose single or multi test case
 set selection "single"
+
+set projectName     prj_ssr_multistage_decimator
+set solutionName    solution_0
+
+
+# ------------------------------------------------------------
+# Procedures
+# ------------------------------------------------------------
 
 # Set the Testcase variable to a list of test case names
 proc setTestcases { selection } {
@@ -42,12 +53,6 @@ proc setTestcases { selection } {
 }
 }
 
-
-set projectName     prj_ssr_multistage_decimator
-set solutionName    solution_0
-
-set Testcases [setTestcases $selection]
-
 # Procedure to check if the project is already open
 proc openProjectIfNeeded { projectName openCommand } {
     # Replace 'get_project' with proper command or mechanism to get the currently open project
@@ -58,81 +63,143 @@ proc openProjectIfNeeded { projectName openCommand } {
     }
 }
 
-
-# Procedure to perform C simulation
-proc CSimulation { testcaseDir workDir } {
-
-    # copy files from test case directory to work directory
-    foreach srcFile [glob -directory $testcaseDir *] {
-        if {[catch {file copy -force $srcFile $workDir} result]} {
-            puts "Failed to copy $srcFile: $result"
-        }
-    }
-
-    # use flag -clean to enable a clean build
-    set csimResult [catch {csim_design -clean} csimOutput]
-    #csim_design -clean
-
-    puts "copy files simulation"
-    # Copy simulation results to test case directory
-    foreach pattern {output_c*} {
-        foreach srcFile [glob -directory $workDir $pattern] {
-            if {[catch {file copy -force $srcFile $testcaseDir} result]} {
-                puts "Failed to copy $srcFile: $result"
-            }
-        }
-    }
-}
-
-# Procedure to perform Co-Simulation
-proc COSimulation { testcaseDir projectName solutionName } {
-
-    set reportDir "./$projectName/$solutionName/syn/report/"
-    set reportFile "${reportDir}ssr_multistage_decimator_csynth.rpt"
-
-    if { ![file exists $reportFile] } {
-        puts "Synthesis not yet completed or report not found. Running csynth_design"
-        csynth_design
-    } else {
-        puts "Synthesis has been completed"
-    }
-
-    # Run the Co-Simulation
-    cosim_design -rtl verilog -trace_level port
-
-    # Copy the Co-Simulation log to the testcase directory
-    set simLogFile "${projectName}/${solutionName}/sim/report/verilog/ssr_multistage_decimator.log"
-    copyFiles ./ $testcaseDir $simLogFile
-
-}
-
-
 #################
 # Main workflow
 #################
-openProjectIfNeeded $projectName "open_tcl_project run.tcl"
+# check if project is already open and - if not, create it from TCL script
+#openProjectIfNeeded $projectName "open_tcl_project run.tcl"
+
+if {$resetProject} {
+    puts "Resetting project $projectName"
+    open_tcl_project run.tcl
+}
 
 set topDir [pwd]
+# @workDir: directory added to the project for simulation
 set workDir "$topDir/data/work"
 
+
+set Testcases [setTestcases $selection]
+
 foreach testcase $Testcases {
+
     puts "Processing $testcase"
 
     set testcaseDir "$topDir/data/$testcase"
+
+    puts "Test case directory is $testcaseDir"
+    puts "Work directory is $workDir"
+
+    # ------------------------------------------------------------
+    # Delete files OF the previous testcase
+    # ------------------------------------------------------------
+
+    # Use glob to match files and then delete them in the work directory
+    puts "Deleting files in work directory $workDir"
+    foreach file [glob -nocomplain -- $workDir/output_c*] {
+        file delete -force -- $file
+    }
+    foreach file [glob -nocomplain -- $workDir/log*] {
+        file delete -force -- $file
+    }
+    foreach file [glob -nocomplain -- $workDir/*.csv] {
+        file delete -force -- $file
+    }
+
+    puts "Deleting files in testcase directory $testcaseDir"
+    # Use glob to match files and then delete them in the testcase directory
+    foreach file [glob -nocomplain -- $testcaseDir/output_c*] {
+        file delete -force -- $file
+    }
+    foreach file [glob -nocomplain -- $testcaseDir/log*] {
+        file delete -force -- $file
+    }
+
+    # ------------------------------------------------------------
+    # Copy files from test case directory to the work directory
+    # ------------------------------------------------------------
+
+    # copy files from test case directory to work directory
+    puts "copy files from $testcaseDir to work directory $workDir"
+    foreach srcFile [glob -directory $testcaseDir *] {
+        if {[catch {file copy -force $srcFile $workDir} result]} {
+            puts "Failed to copy $srcFile: $result"
+        } else {
+            puts "Copied $srcFile"
+        }
+    }
+
 
     #######################
     # Perform C Simulation
     #######################
     if {$CSIM} {
-        puts $testcaseDir
-        puts $workDir
-        CSimulation $testcaseDir $workDir
+        # When C simulation completes, a csim folder is created inside the solution folder. This folder contains the following elements:
+        #  * csim/build: The primary location for all files related to the C simulation
+        #      ** Any files read by the test bench are copied to this folder.
+        #      ** The C executable file csim.exe is created and run in this folder.
+        #      ** Any files written by the test bench are created in this folder.
+        #  * csim/report: Contains a log file of the C simulation build and run.
+
+        #  @buildDir csim/build/work:
+        set buildDir "$topDir/$projectName/$solutionName/csim/build/work"
+
+        # use flag -clean to enable a clean build
+        set csimResult [catch {csim_design -clean -profile} csimOutput]
+        #csim_design -clean
+
+        puts "copy simulation results from $buildDir to $testcaseDir"
+        # Copy simulation results to test case directory
+        foreach pattern {log* output_c*} {
+            foreach srcFile [glob -directory $buildDir $pattern] {
+                if {[catch {file copy -force $srcFile $testcaseDir} result]} {
+                    puts "Failed to copy $srcFile: $result"
+                }
+            }
+        }
+        puts "C simulation $testcase ended"
     }
+
 
     #######################
     # Perform Co-Simulation
     #######################
     if {$COSIM} {
-        COSimulation $testcaseDir $projectName $solutionName
+        # When C/RTL Cosimulation completes, the sim folder is created inside the solution folder.
+        # This folder contains the following elements:
+        #   * The sim/report folder contains the report and log file for each type of RTL simulated
+
+        # the tool re-use the files used for C simulation
+
+        # Run the Co-Simulation
+        cosim_design -rtl verilog -trace_level all
+
+        # -----------------------------------------------
+        # Copy the co-simulatior report and log files to the testcase directory
+        # -----------------------------------------------
+        set simReportFile "${projectName}/${solutionName}/sim/report/ssr_multistage_decimator_cosim.rpt"
+        set simLogFile "${projectName}/${solutionName}/sim/report/verilog/ssr_multistage_decimator.log"
+
+        #
+        set destinationFile [file join $testcaseDir [file tail $simReportFile]]
+        file copy -force $simReportFile $destinationFile
+        if { [file exists $destinationFile] } {
+            puts "File copied successfully to $destinationFile."
+        } else {
+            puts "Error: File could not be copied."
+        }
+
+        #
+        set destinationFile [file join $testcaseDir [file tail $simLogFile]]
+        file copy -force $simLogFile $destinationFile
+        if { [file exists $destinationFile] } {
+            puts "File copied successfully to $destinationFile."
+        } else {
+            puts "Error: File could not be copied."
+        }
+
+        puts "C/RTL cosimulation $testcase ended"
     }
+
+
 }
