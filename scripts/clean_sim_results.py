@@ -24,7 +24,7 @@ def delete_matlab_files_in_directory(directory):
         file_path = os.path.join(directory, filename)
         if os.path.isfile(file_path) and (
             filename.startswith('input') or  
-            filename.startswith('output.mat')
+            filename.startswith('output_ref')
         ):
             print(f"Deleting file: {file_path}")
             os.remove(file_path)

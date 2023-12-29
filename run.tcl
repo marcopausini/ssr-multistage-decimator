@@ -40,7 +40,6 @@ set WorkDir "$TopDir/data/work"
 
 # Add the file for synthesis
 add_files $TopDir/hw/src/ssr_multistage_decimator.cpp 
-add_files $TopDir/hw/src/hb_filters.cpp
 
 # Add testbench files for co-simulation
 add_files -tb  $TopDir/hw/tb/tb_ssr_multistage_decimator.cpp

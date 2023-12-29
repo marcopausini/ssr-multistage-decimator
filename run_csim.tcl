@@ -33,7 +33,7 @@ set solutionName    solution_0
 proc setTestcases { selection } {
     switch -exact -- $selection {
         "single" {
-            return [list testcase_decim_2_signal_exponential]
+            return [list testcase_decim_16_signal_impulse]
         }
         "multi" {
             return [list \
