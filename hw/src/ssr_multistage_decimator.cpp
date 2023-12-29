@@ -60,19 +60,19 @@ void ssr_multistage_decimator(dec_factor_t dec_factor, bool tvalid_i, cdatain_ve
     // fourth filter stage (decimation factor = 16)
     bool tvalid_dec16;
     cdata_vec_t<1> tdata_dec16;
-    //dec2_ssr1<16>(tvalid_dec8, tdata_dec8, tvalid_dec16, tdata_dec16);
+    dec2_ssr1<16>(tvalid_dec8, tdata_dec8, tvalid_dec16, tdata_dec16);
     // debug
-    hbf<0>(tvalid_dec8, tdata_dec8, tvalid_dec16, tdata_dec16);
+    //hbf<0>(tvalid_dec8, tdata_dec8, tvalid_dec16, tdata_dec16);
 
     // fifth filter stage (decimation factor = 32)
     bool tvalid_dec32;
-    cdata_t tdata_dec32;
-    // dec2_ssr1<32>(tvalid_dec16, tdata_dec16, tvalid_dec32, tdata_dec32);
+    cdata_vec_t<1> tdata_dec32;
+    dec2_ssr1<32>(tvalid_dec16, tdata_dec16, tvalid_dec32, tdata_dec32);
 
     // sixth filter stage (decimation factor = 64)
     bool tvalid_dec64;
-    cdata_t tdata_dec64;
-    // dec2_ssr1<64>(tvalid_dec32, tdata_dec32, tvalid_dec64, tdata_dec64);
+    cdata_vec_t<1> tdata_dec64;
+    dec2_ssr1<64>(tvalid_dec32, tdata_dec32, tvalid_dec64, tdata_dec64);
 
     // get the output data
     if (dec_factor == 1)
@@ -99,5 +99,19 @@ void ssr_multistage_decimator(dec_factor_t dec_factor, bool tvalid_i, cdatain_ve
     {
         tvalid_o = tvalid_dec16;
         copy_data<1>(tdata_dec16, tdata_o);
+    }
+    else if (dec_factor == 32)
+    {
+        tvalid_o = tvalid_dec32;
+        copy_data<1>(tdata_dec32, tdata_o);
+    }
+    else if (dec_factor == 64)
+    {
+        tvalid_o = tvalid_dec64;
+        copy_data<1>(tdata_dec64, tdata_o);
+    }
+    else
+    {
+        tvalid_o = false;
     }
 }

@@ -153,7 +153,7 @@ int main(void)
 
     // counters
     int watchdogCounter = 0;
-    int tapDelayLineCounter = 50; // to be checked
+    int tapDelayLineCounter = 100; // to be checked
     int watchdogLimit = 10000;
 
     // --------------------------------
@@ -182,7 +182,7 @@ int main(void)
                 din.tdata.re[i].range() = re;
                 din.tdata.im[i].range() = im;
             }
-            std::cout << "din.tdata.re[0] = " << din.tdata.re[0] << std::endl;
+           // std::cout << "din.tdata.re[0] = " << din.tdata.re[0] << std::endl;
             din.tvalid = true;
             numInputSamples += ssr;
         }
@@ -220,7 +220,10 @@ int main(void)
             case 4: 
                 numOutputSamples = numOutputSamples + ssr / 4;
                 break;
-            case (8, 16, 32, 64):
+            case 8:
+            case 16:
+            case 32:
+            case 64:    
                 numOutputSamples = numOutputSamples + ssr / 8;
                 break;
             default:
