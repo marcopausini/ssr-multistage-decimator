@@ -52,7 +52,7 @@ classdef MatlabTestBench
             obj.acc_t.w = 40;
             obj.acc_t.f = 32;
             obj.dataout_t.w = 16; % word length
-            obj.dataout_t.f = 14; % fraction length
+            obj.dataout_t.f = 15; % fraction length
             % -----------------------------
             % get the test case parameters
             % -----------------------------
@@ -191,6 +191,9 @@ classdef MatlabTestBench
                     end
                     obj.NumInputSamples = length(t); % Ensure NumInputSamples property matches time vector length
                     input = obj.Amplitude * randn(1, obj.NumInputSamples);
+                case 'impulse'
+                    input = zeros(obj.NumInputSamples,1);
+                    input(1) = 1;
                 otherwise
                     error('Signal type "%s" not supported. Valid types: chirp, exponential, random', obj.SignalType);
             end
