@@ -11,51 +11,93 @@
  */
 
 #include "ssr_multistage_decimator.h"
+#include "dec_filters.h"
+
+template <int N>
+void copy_data(cdata_vec_t<N> &tdata_i, cdataout_vec_t<ssr> &tdata_o)
+{
+    for (int i = 0; i < N; ++i)
+    {
+#pragma HLS UNROLL
+        tdata_o.re[i] = tdata_i.re[i];
+        tdata_o.im[i] = tdata_i.im[i];
+    }
+}
+
+void copy_data(cdatain_vec_t<ssr> &tdata_i, cdataout_vec_t<ssr> &tdata_o)
+{
+    for (int i = 0; i < ssr; ++i)
+    {
+#pragma HLS UNROLL
+        tdata_o.re[i] = tdata_i.re[i];
+        tdata_o.im[i] = tdata_i.im[i];
+    }
+}
 
 // FIR filter parameters
-void ssr_multistage_decimator(hls::stream<cdata_t<ssr>> &in, hls::stream<cdata_t<ssr>> &out, dec_factor_t dec_factor)
+void ssr_multistage_decimator(dec_factor_t dec_factor, bool tvalid_i, cdatain_vec_t<ssr> tdata_i, bool &tvalid_o, cdataout_vec_t<ssr> &tdata_o)
 {
-/*
- * An hls::stream<> on the top-level interface is by default implemented with an ap_fifo interface for the AMD Vivado™ IP flow
- * If an hls::stream is used inside the design function and synthesized into hardware, it is implemented as a FIFO with a default depth of 2
- * Important: Ensure hls::stream variables are correctly sized when used in the default non-DATAFLOW regions.
- * If an hls::stream is used to transfer data between tasks (sub-functions or loops), you should implement the tasks in a DATAFLOW region where data streams from one task to the next.
- * A stream can also be specified as hls::stream<Type, Depth>, where Depth indicates the depth of the FIFO needed
- * For multirate designs in which the implementation requires a FIFO with a depth greater than 2,
- * you must determine (and set using the STREAM directive) the depth necessary for the RTL simulation to complete.
- */
 
 //  add pragams for the decimation factor
 #pragma HLS INTERFACE s_axilite port = dec_factor bundle = control
 
-    // output samples
-    cdata_t<ssr> output;
+    
+    // first filter stage (decimation factor = 2)
+    bool tvalid_dec2;
+    cdata_vec_t<4> tdata_dec2;
+    dec2_ssr8(tvalid_i, tdata_i, tvalid_dec2, tdata_dec2);
 
-    // first filter stage
-    hls::stream<cdata_t<ssr / 2>> out_dec2("out_dec2_stream");
-    cdata_t<ssr / 2> output_dec2;
+    // second filter stage (decimation factor = 4)
+    bool tvalid_dec4;
+    cdata_vec_t<2> tdata_dec4;
+    dec2_ssr4(tvalid_dec2, tdata_dec2, tvalid_dec4, tdata_dec4);
 
-    switch (dec_factor)
+    // third filter stage (decimation factor = 8)
+    bool tvalid_dec8;
+    cdata_vec_t<1> tdata_dec8;
+    dec2_ssr2(tvalid_dec4, tdata_dec4, tvalid_dec8, tdata_dec8);
+
+    // fourth filter stage (decimation factor = 16)
+    bool tvalid_dec16;
+    cdata_vec_t<1> tdata_dec16;
+    //dec2_ssr1<16>(tvalid_dec8, tdata_dec8, tvalid_dec16, tdata_dec16);
+    // debug
+    hbf<0>(tvalid_dec8, tdata_dec8, tvalid_dec16, tdata_dec16);
+
+    // fifth filter stage (decimation factor = 32)
+    bool tvalid_dec32;
+    cdata_t tdata_dec32;
+    // dec2_ssr1<32>(tvalid_dec16, tdata_dec16, tvalid_dec32, tdata_dec32);
+
+    // sixth filter stage (decimation factor = 64)
+    bool tvalid_dec64;
+    cdata_t tdata_dec64;
+    // dec2_ssr1<64>(tvalid_dec32, tdata_dec32, tvalid_dec64, tdata_dec64);
+
+    // get the output data
+    if (dec_factor == 1)
     {
-    case 1:
-        out.write(in.read());
-        break;
-    case 2:
-        //
-        hbf_ssr8(in, out_dec2);
-        output_dec2 = out_dec2.read();
-        
-        for (int i = 0; i < ssr / 2; i++)
-        // Unroll this loop to copy all elements in parallel
-        #pragma HLS unroll
-        {
-            output.re[i] = output_dec2.re[i];
-            output.im[i] = output_dec2.im[i];
-        }
-        out.write(output);
-        break;
-    default:
-        out.write(in.read());
-        break;
+        tvalid_o = tvalid_i;
+        copy_data(tdata_i, tdata_o);
+    }
+    else if (dec_factor == 2)
+    {
+        tvalid_o = tvalid_dec2;
+        copy_data<4>(tdata_dec2, tdata_o);
+    }
+    else if (dec_factor == 4)
+    {
+        tvalid_o = tvalid_dec4;
+        copy_data<2>(tdata_dec4, tdata_o);
+    }
+    else if (dec_factor == 8)
+    {
+        tvalid_o = tvalid_dec8;
+        copy_data<1>(tdata_dec8, tdata_o);
+    }
+    else if (dec_factor == 16)
+    {
+        tvalid_o = tvalid_dec16;
+        copy_data<1>(tdata_dec16, tdata_o);
     }
 }
