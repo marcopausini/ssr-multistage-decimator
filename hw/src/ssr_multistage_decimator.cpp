@@ -24,6 +24,17 @@ void copy_data(cdata_vec_t<N> &tdata_i, cdataout_vec_t<ssr> &tdata_o)
     }
 }
 
+template <int N>
+void read_data(cdata_vec_t<2*N> &tdata_i, cdata_vec_t<N> &tdata_o)
+{
+    for (int i = 0; i < N; ++i)
+    #pragma HLS UNROLL
+    {
+        tdata_o.re[i] = tdata_i.re[i];
+        tdata_o.im[i] = tdata_i.im[i];
+    }
+}
+
 void copy_data(cdatain_vec_t<ssr> &tdata_i, cdataout_vec_t<ssr> &tdata_o)
 {
     for (int i = 0; i < ssr; ++i)
@@ -44,23 +55,29 @@ void ssr_multistage_decimator(dec_factor_t dec_factor, bool tvalid_i, cdatain_ve
     
     // first filter stage (decimation factor = 2)
     bool tvalid_dec2;
-    cdata_vec_t<4> tdata_dec2;
-    dec2_ssr8(tvalid_i, tdata_i, tvalid_dec2, tdata_dec2);
+    cdata_vec_t<8> tdata_o_dec2;
+    dec2_ssr8(tvalid_i, tdata_i, tvalid_dec2, tdata_o_dec2);
 
     // second filter stage (decimation factor = 4)
     bool tvalid_dec4;
-    cdata_vec_t<2> tdata_dec4;
-    dec2_ssr4(tvalid_dec2, tdata_dec2, tvalid_dec4, tdata_dec4);
+    cdata_vec_t<4> tdata_i_dec4;
+    cdata_vec_t<4> tdata_o_dec4;
+    read_data<4>(tdata_o_dec2, tdata_i_dec4);
+    dec2_ssr4(tvalid_dec2, tdata_i_dec4, tvalid_dec4, tdata_o_dec4);
 
     // third filter stage (decimation factor = 8)
     bool tvalid_dec8;
-    cdata_vec_t<1> tdata_dec8;
-    dec2_ssr2(tvalid_dec4, tdata_dec4, tvalid_dec8, tdata_dec8);
+    cdata_vec_t<2> tdata_i_dec8;
+    cdata_vec_t<2> tdata_o_dec8;
+    read_data<2>(tdata_o_dec4, tdata_i_dec8);
+    dec2_ssr2(tvalid_dec4, tdata_i_dec8, tvalid_dec8, tdata_o_dec8);
 
     // fourth filter stage (decimation factor = 16)
     bool tvalid_dec16;
+    cdata_vec_t<1> tdata_i_dec16;
     cdata_vec_t<1> tdata_dec16;
-    dec2_ssr1<16>(tvalid_dec8, tdata_dec8, tvalid_dec16, tdata_dec16);
+    read_data<1>(tdata_o_dec8, tdata_i_dec16);
+    dec2_ssr1<16>(tvalid_dec8, tdata_i_dec16, tvalid_dec16, tdata_dec16);
     // debug
     //hbf<0>(tvalid_dec8, tdata_dec8, tvalid_dec16, tdata_dec16);
 
@@ -83,17 +100,17 @@ void ssr_multistage_decimator(dec_factor_t dec_factor, bool tvalid_i, cdatain_ve
     else if (dec_factor == 2)
     {
         tvalid_o = tvalid_dec2;
-        copy_data<4>(tdata_dec2, tdata_o);
+        copy_data<8>(tdata_o_dec2, tdata_o);
     }
     else if (dec_factor == 4)
     {
         tvalid_o = tvalid_dec4;
-        copy_data<2>(tdata_dec4, tdata_o);
+        copy_data<4>(tdata_o_dec4, tdata_o);
     }
     else if (dec_factor == 8)
     {
         tvalid_o = tvalid_dec8;
-        copy_data<1>(tdata_dec8, tdata_o);
+        copy_data<2>(tdata_o_dec8, tdata_o);
     }
     else if (dec_factor == 16)
     {
