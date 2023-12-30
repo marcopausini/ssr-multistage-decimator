@@ -30,6 +30,31 @@ const double coeff_vec[31] = {
     -0.001503};
 */
 
+// ---------------------------------------------------------------------------------------------
+// dec2_ssr8: 1280 -> 640 ( overal decimation factor = 2, SSR = 8)
+// 8 inputs per clock cycle are processed in parallel using polyphase decomposition
+// Y(z) = Y0(z^8) + z^-1 Y1(z^8) + z^-2 Y2(z^8) + z^-3Y3(z^8) + z^-4Y4(z^8) + z^-5Y5(z^8) + z^-6Y6(z^8) + z^-7Y7(z^8), where:
+// * Y0(z^8) = P0(z^8) X0(z^8) + (z^-8){P7(z^8) X1(z^8) + P6(z^8) X2(z^8) + P5(z^8) X3(z^8) + P4(z^8) X4(z^8) + P3(z^8) X5(z^8) + P2(z^8) X6(z^8) + P1(z^8) X7(z^8)}
+// * Y1(z^8) = P1(z^8) X0(z^8) + P0(z^8) X1(z^8) + (z^-8){P7(z^8) X2(z^8) + P6(z^8) X3(z^8) + P5(z^8) X4(z^8) + P4(z^8) X5(z^8) + P3(z^8) X6(z^8) + P2(z^8) X7(z^8)}
+// * Y2(z^8) = P2(z^8) X0(z^8) + P1(z^8) X1(z^8) + P0(z^8) X2(z^8) + (z^-8){P7(z^8) X3(z^8) + P6(z^8) X4(z^8) + P5(z^8) X5(z^8) + P4(z^8) X6(z^8) + P3(z^8) X7(z^8)}
+// * Y3(z^8) = P3(z^8) X0(z^8) + P2(z^8) X1(z^8) + P1(z^8) X2(z^8) + P0(z^8) X3(z^8) + (z^-8){P7(z^8) X4(z^8) + P6(z^8) X5(z^8) + P5(z^8) X6(z^8) + P4(z^8) X7(z^8)}
+// * Y4(z^8) = P4(z^8) X0(z^8) + P3(z^8) X1(z^8) + P2(z^8) X2(z^8) + P1(z^8) X3(z^8) + P0(z^8) X4(z^8) + (z^-8){P7(z^8) X5(z^8) + P6(z^8) X6(z^8) + P5(z^8) X7(z^8)}
+// * Y5(z^8) = P5(z^8) X0(z^8) + P4(z^8) X1(z^8) + P3(z^8) X2(z^8) + P2(z^8) X3(z^8) + P1(z^8) X4(z^8) + P0(z^8) X5(z^8) + (z^-8){P7(z^8) X6(z^8) + P6(z^8) X7(z^8)}
+// * Y6(z^8) = P6(z^8) X0(z^8) + P5(z^8) X1(z^8) + P4(z^8) X2(z^8) + P3(z^8) X3(z^8) + P2(z^8) X4(z^8) + P1(z^8) X5(z^8) + P0(z^8) X6(z^8) + (z^-8)P7(z^8) X7(z^8)
+// * Y7(z^8) = P7(z^8) X0(z^8) + P6(z^8) X1(z^8) + P5(z^8) X2(z^8) + P4(z^8) X3(z^8) + P3(z^8) X4(z^8) + P2(z^8) X5(z^8) + P1(z^8) X6(z^8) + P0(z^8) X7(z^8)
+//
+// only 4 output are computed per clock cycle - the other are not computed because they are discarded,
+// 
+// Y0(z^8) = tdata_o[7], X0(z^8) = tdata_i[7]
+// Y1(z^8) = tdata_o[6], X1(z^8) = tdata_i[6]
+// Y2(z^8) = tdata_o[5], X2(z^8) = tdata_i[5]
+// Y3(z^8) = tdata_o[4], X3(z^8) = tdata_i[4]
+// Y4(z^8) = tdata_o[3], X4(z^8) = tdata_i[3]
+// Y5(z^8) = tdata_o[2], X5(z^8) = tdata_i[2]
+// Y6(z^8) = tdata_o[1], X6(z^8) = tdata_i[1]
+// Y7(z^8) = tdata_o[0], X7(z^8) = tdata_i[0]
+// ---------------------------------------------------------------------------------------------
+
 void dec2_ssr8(bool tvalid_i, cdatain_vec_t<8> tdata_i, bool &tvalid_o, cdata_vec_t<4> &tdata_o)
 {
 
@@ -49,6 +74,22 @@ void dec2_ssr8(bool tvalid_i, cdatain_vec_t<8> tdata_i, bool &tvalid_o, cdata_ve
     
 };
 
+// ---------------------------------------------------------------------------------------------
+// dec2_ssr4: 640 -> 320 ( overal decimation factor = 4, SSR = 4)
+// 4 inputs per clock cycle are processed in parallel using polyphase decomposition
+// Y(z) = Y0(z^4) + z^-1 Y1(z^4) + z^-2 Y2(z^4) + z^-3Y3(z^4), where:
+// * Y0(z^4) = P0(z^4) X0(z^4) +                                                    (z^-4){P3(z^4) X1(z^4) + P2(z^4) X2(z^4) + P1(z^4) X3(z^4)}
+// * Y1(z^4) = P1(z^4) X0(z^4) + P0(z^4) X1(z^4) +                                  (z^-4){P3(z^4) X2(z^4) + P2(z^4) X3(z^4)}
+// * Y2(z^4) = P2(z^4) X0(z^4) + P1(z^4) X1(z^4) + P0(z^4) X2(z^4) +                (z^-4)P3(z^4) X3(z^4)
+// * Y3(z^4) = P3(z^4) X0(z^4) + P2(z^4) X1(z^4) + P1(z^4) X2(z^4) + P0(z^4) X3(z^4)
+// only 2 output are computed per clock cycle - the other are not computed because they are discarded,
+// since the decimation factor is 2
+//
+// Y0(z^4) = tdata_o[3], X0(z^4) = tdata_i[3]
+// Y1(z^4) = tdata_o[2], X1(z^4) = tdata_i[2]
+// Y2(z^4) = tdata_o[1], X2(z^4) = tdata_i[1]
+// Y3(z^4) = tdata_o[0], X3(z^4) = tdata_i[0]
+// ---------------------------------------------------------------------------------------------
 void dec2_ssr4(bool tvalid_i, cdata_vec_t<4> tdata_i, bool &tvalid_o, cdata_vec_t<2> &tdata_o)
 {
 
@@ -71,9 +112,12 @@ void dec2_ssr4(bool tvalid_i, cdata_vec_t<4> tdata_i, bool &tvalid_o, cdata_vec_
 // 2 inputs per clock cycle are processed in parallel using polyphase decomposition
 // Y(z) = Y0(z^2) + z^-1 Y1(z^2), where:
 // * Y0(z^2) = P0(z^2) X0(z^2) + (z^-2)P1(z^2) X1(z^2)
-// * Y1(z^2) = P1(z^2) X0(z^2) + P0(z^2) X1(z^2)
+// * Y1(z^2) = P1(z^2) X0(z^2) +       P0(z^2) X1(z^2)
 // only 1 output is computed per clock cycle - the other is not computed because it needs to be discarded,
 // since the decimation factor is 2
+//
+// Y0(z^2) = tdata_o[1], X0(z^2) = tdata_i[1]
+// Y1(z^2) = tdata_o[0], X1(z^2) = tdata_i[0]
 // ---------------------------------------------------------------------------------------------
 void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_t<1> &tdata_o)
 {
