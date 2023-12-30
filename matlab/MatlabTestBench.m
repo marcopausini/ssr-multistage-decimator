@@ -193,7 +193,7 @@ classdef MatlabTestBench
                     input = obj.Amplitude * randn(1, obj.NumInputSamples);
                 case 'impulse'
                     input = zeros(obj.NumInputSamples,1);
-                    input(1) = 1;
+                    input(1) = 1+1i*1;
                 otherwise
                     error('Signal type "%s" not supported. Valid types: chirp, exponential, random', obj.SignalType);
             end

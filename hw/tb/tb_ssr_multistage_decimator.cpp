@@ -207,7 +207,7 @@ int main(void)
         if (dout.tvalid)
         {
          
-            std::cout << "dout.tdata.re[0] = " << dout.tdata.re[0] << std::endl;
+            //std::cout << "dout.tdata.re[0] = " << dout.tdata.re[0] << std::endl;
             // increment the number of output samples
             switch (dec_factor)
             {
