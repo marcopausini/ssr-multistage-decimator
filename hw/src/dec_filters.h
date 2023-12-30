@@ -55,7 +55,7 @@ const double coeff_vec[31] = {
 // Y7(z^8) = tdata_o[0], X7(z^8) = tdata_i[0]
 // ---------------------------------------------------------------------------------------------
 
-void dec2_ssr8(bool tvalid_i, cdatain_vec_t<8> tdata_i, bool &tvalid_o, cdata_vec_t<4> &tdata_o)
+void dec2_ssr8(bool tvalid_i, cdatain_vec_t<8> tdata_i, bool &tvalid_o, cdata_vec_t<8> &tdata_o)
 {
 
 
@@ -90,7 +90,7 @@ void dec2_ssr8(bool tvalid_i, cdatain_vec_t<8> tdata_i, bool &tvalid_o, cdata_ve
 // Y2(z^4) = tdata_o[1], X2(z^4) = tdata_i[1]
 // Y3(z^4) = tdata_o[0], X3(z^4) = tdata_i[0]
 // ---------------------------------------------------------------------------------------------
-void dec2_ssr4(bool tvalid_i, cdata_vec_t<4> tdata_i, bool &tvalid_o, cdata_vec_t<2> &tdata_o)
+void dec2_ssr4(bool tvalid_i, cdata_vec_t<4> tdata_i, bool &tvalid_o, cdata_vec_t<4> &tdata_o)
 {
 
     tvalid_o = tvalid_i;
@@ -119,7 +119,7 @@ void dec2_ssr4(bool tvalid_i, cdata_vec_t<4> tdata_i, bool &tvalid_o, cdata_vec_
 // Y0(z^2) = tdata_o[1], X0(z^2) = tdata_i[1]
 // Y1(z^2) = tdata_o[0], X1(z^2) = tdata_i[0]
 // ---------------------------------------------------------------------------------------------
-void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_t<1> &tdata_o)
+void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_t<2> &tdata_o)
 {
 
 #pragma HLS INLINE off
@@ -163,15 +163,18 @@ void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_
     tdata_o.re[0] = acc.re;
     tdata_o.im[0] = acc.im;
 
+    tdata_o.re[1] = 0;
+    tdata_o.im[1] = 0;
+
     // DEBUG:  compute the ouput  Y0(z^2) = P0(z^2) X0(z^2) + (z^-2)P1(z^2) X1(z^2)
     // cacc_t acc2 = multi_mac_systolic<10, num_coef>(toshift_v, tdata_vi[0], coeff_vec0); // P0(z^2) X0(z^2)
     // cacc_t acc3 = multi_mac_systolic<11, num_coef>(toshift_v, tdata_vi[1], coeff_vec1); // P1(z^2) X1(z^2)
     
-    // phase combiner adds one clock cycle of latency
+    // phase combiner adds one clock cycle of latency - delay tdata_o[0] by one clock cycle 
     // cacc_t acc_dbg = phase_combiner_2<2>(acc2, acc3);
 
-    // tdata_o.re[0] = acc_dbg.re;
-    // tdata_o.im[0] = acc_dbg.im;
+    // tdata_o.re[1] = acc_dbg.re;
+    // tdata_o.im[1] = acc_dbg.im;
 
 }
 
