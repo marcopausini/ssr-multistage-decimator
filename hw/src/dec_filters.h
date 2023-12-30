@@ -83,10 +83,10 @@ void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_
     constexpr unsigned int num_coef = 16;
     // polyphase decomposition coefficients
     const coef_int_t coeff_vec0[num_coef] = {-197, 501, -1087, 2079, -3723, 6596, -12793, 41339, 41339, -12793, 6596, -3723, 2079, -1087, 501, -197};
-    const coef_int_t coeff_vec1[num_coef] = {0, 0, 0, 0, 0, 0, 0, 0,65536, 0, 0, 0, 0, 0, 0, 0, 0};
+    const coef_int_t coeff_vec1[num_coef] = {0, 0, 0, 0, 0, 0, 0, 65536, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    // shift registers to align valid to the module output (1 extra clock for the final sum)
-    static ap_shift_reg<bool, (num_coef+1)+1> vld_shftreg;
+    // shift registers to align valid to the module output (consider if 1 extra clock is needed for the final sum)
+    static ap_shift_reg<bool, (num_coef+1)> vld_shftreg;
 
     // ---------------------------------------------
     // control the shift register of the mac engine 
@@ -109,16 +109,25 @@ void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_
     tdata_vi[1].re = tdata_i.re[0];
     tdata_vi[1].im = tdata_i.im[0];
 
-    // compute the output P1(z^2) X0(z^2) 
-    cacc_t acc0 = multi_mac_systolic<8, num_coef>(toshift_v, tdata_vi[0], coeff_vec1);
-    // compute the output P0(z^2) X1(z^2)
-    cacc_t acc1 = multi_mac_systolic<9, num_coef>(toshift_v, tdata_vi[1], coeff_vec0);
+    // compute the output Y1(z^2) = P1(z^2) X0(z^2) + P0(z^2) X1(z^2)
+    cacc_t acc0 = multi_mac_systolic<8, num_coef>(toshift_v, tdata_vi[0], coeff_vec1); // P1(z^2) X0(z^2)
+    cacc_t acc1 = multi_mac_systolic<9, num_coef>(toshift_v, tdata_vi[1], coeff_vec0); // P0(z^2) X1(z^2)
 
     // output sample - sum and cast to the output data type
     cacc_t acc = {acc0.re + acc1.re, acc0.im + acc1.im};
 
     tdata_o.re[0] = acc.re;
     tdata_o.im[0] = acc.im;
+
+    // DEBUG:  compute the ouput  Y0(z^2) = P0(z^2) X0(z^2) + (z^-2)P1(z^2) X1(z^2)
+    // cacc_t acc2 = multi_mac_systolic<10, num_coef>(toshift_v, tdata_vi[0], coeff_vec0); // P0(z^2) X0(z^2)
+    // cacc_t acc3 = multi_mac_systolic<11, num_coef>(toshift_v, tdata_vi[1], coeff_vec1); // P1(z^2) X1(z^2)
+    
+    // phase combiner adds one clock cycle of latency
+    // cacc_t acc_dbg = phase_combiner_2<2>(acc2, acc3);
+
+    // tdata_o.re[0] = acc_dbg.re;
+    // tdata_o.im[0] = acc_dbg.im;
 
 }
 
