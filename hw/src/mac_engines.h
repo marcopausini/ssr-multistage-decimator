@@ -124,4 +124,25 @@ MULTMACLOOP:
     return (acc_r[num_coef - 1]);
 }
 
+template <int instance_id>
+cacc_t phase_combiner_2(cacc_t ph0, cacc_t ph1)
+{
+    // shift registers for input data
+    static cacc_t x_r0[1];
+    static cacc_t x_r1[2];
+
+    cacc_t acc = {0, 0};
+
+    // combiner
+    acc.re = x_r0[0].re + x_r1[1].re;
+    acc.im = x_r0[0].im + x_r1[1].im;
+
+    x_r0[0] = ph0;
+    x_r1[0] = ph1;
+    x_r1[1] = x_r1[0];
+
+    return acc;  
+
+}
+
 #endif /* MAC_ENGINES_H_ */
