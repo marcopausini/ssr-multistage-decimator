@@ -88,10 +88,8 @@ classdef MatlabTestBench
             obj = loadOutputCsim(obj);
             % compare the C simulation outputs with the reference outputs
             obj = compareResults(obj);
-
             % compare frequency and power of the C simulation outputs with the reference outputs
             obj = compareSignalFreqPower(obj);
-
         end
     end
 
@@ -183,7 +181,7 @@ classdef MatlabTestBench
                     realPart = obj.Amplitude * chirp(t, obj.SignalBandwidth(1), obj.SignalDuration, obj.SignalBandwidth(2), 'linear', phi);
                     imagPart = obj.Amplitude * chirp(t, obj.SignalBandwidth(1), obj.SignalDuration, obj.SignalBandwidth(2), 'linear', phi + pi / 2);
                     input = realPart + 1i * imagPart;
-                case 'exponential'
+                case 'complex_exp'
                     input = obj.Amplitude * exp(1i * 2 * pi * obj.SignalFrequency * t);
                 case 'random'
                     if isprop(obj, 'seed') % Check if seed property exists
@@ -195,7 +193,7 @@ classdef MatlabTestBench
                     input = zeros(obj.NumInputSamples,1);
                     input(1) = 1+1i*1;
                 otherwise
-                    error('Signal type "%s" not supported. Valid types: chirp, exponential, random', obj.SignalType);
+                    error('Signal type "%s" not supported. Valid types: chirp, complex_exp, random, impulse', obj.SignalType);
             end
             % convert to fixed point
             input = convertToFxpnt(input, 's', obj.datain_t.w, obj.datain_t.f);
