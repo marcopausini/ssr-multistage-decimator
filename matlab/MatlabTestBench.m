@@ -356,6 +356,9 @@ classdef MatlabTestBench
                 error('Both Output and OutputC must be set before comparison.');
             end
 
+            fprintf('Input Signal Frequency: %.4f MHz\n', obj.SignalFrequency');
+            fprintf('Input Signal Power: %.4f dB\n', 10 * log10( (abs(obj.Amplitude) .^ 2) ) );
+
             % Print the header with added 'powerDiff' and 'freqDiff'
             fprintf('\n%-15s %-15s %-15s %-15s %-15s %-15s %-15s %-15s\n', ...
                 'powerInput [dB]', 'powerRef [dB]', 'powerC [dB]', ...
@@ -370,17 +373,23 @@ classdef MatlabTestBench
             % Compute the power difference in dB
             powerDiff = powerRef - powerC;
             % Compute the frequency of the input in MHz
-            freqInput = meanfreq(obj.Input, obj.InputSampleRate);
+            freqInput = obj.meas_frequency(obj.Input, obj.InputSampleRate);
             % Compute the frequency of the reference output in MHz
-            freqRef = meanfreq(obj.Output, obj.OutputSampleRate);
+            freqRef = obj.meas_frequency(obj.Output, obj.OutputSampleRate);
             % Compute the frequency of the C output in MHz
-            freqC = meanfreq(obj.OutputC, obj.OutputSampleRate);
+            freqC = obj.meas_frequency(obj.OutputC, obj.OutputSampleRate);
             % Compute the frequency difference in MHz
-            freqDiff = freqRef - freqC;
+            freqDiff = freqRef - freqInput;
             % Print the results with column alignment including 'powerDiff' and 'freqDiff'
-            fprintf('%-15.2f %-15.2f %-15.2f %-15.2f %-15.2f %-15.2f %-15.2f %-15.2f\n', ...
+            fprintf('%-15.2f %-15.2f %-15.2f %-15.2f %-15.4f %-15.4f %-15.4f %-15.4f\n', ...
                 powerInput, powerRef, powerC, powerDiff, freqInput, freqRef, freqC, freqDiff);
+        end
 
+        function freq = meas_frequency(obj, x, Fs)
+            %MEAS_FREQUENCY Estimate the frequency of a signal
+            nSamp = length(x);
+            [Pxx, F] = periodogram(x, kaiser(nSamp, 38), [], Fs);
+            freq = meanfreq(Pxx, F);
         end
 
         %% plot and save power spectrum of the input and output signals
