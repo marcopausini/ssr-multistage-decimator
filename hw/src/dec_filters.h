@@ -241,34 +241,42 @@ void dec2_ssr8(bool tvalid_i, cdatain_vec_t<8> tdata_i, bool &tvalid_o, cdata_ve
 // ---------------------------------------------------------------------------------------------
 // dec2_ssr4: 640 -> 320 ( overal decimation factor = 4, SSR = 4)
 // 4 inputs per clock cycle are processed in parallel using polyphase decomposition
-// Y(z) = Y0(z^4) + z^-1 Y1(z^4) + z^-2 Y2(z^4) + z^-3Y3(z^4), where:
-// * Y0(z^4) = P0(z^4) X0(z^4) +                                                    (z^-4){P3(z^4) X1(z^4) + P2(z^4) X2(z^4) + P1(z^4) X3(z^4)}
-// * Y1(z^4) = P1(z^4) X0(z^4) + P0(z^4) X1(z^4) +                                  (z^-4){P3(z^4) X2(z^4) + P2(z^4) X3(z^4)}
-// * Y2(z^4) = P2(z^4) X0(z^4) + P1(z^4) X1(z^4) + P0(z^4) X2(z^4) +                (z^-4)P3(z^4) X3(z^4)
-// * Y3(z^4) = P3(z^4) X0(z^4) + P2(z^4) X1(z^4) + P1(z^4) X2(z^4) + P0(z^4) X3(z^4)
-// only 2 output are computed per clock cycle - the other are not computed because they are discarded,
-// since the decimation factor is 2
 //
-// Y0(z^4) = tdata_o[3], X0(z^4) = tdata_i[3]
-// Y1(z^4) = tdata_o[2], X1(z^4) = tdata_i[2]
-// Y2(z^4) = tdata_o[1], X2(z^4) = tdata_i[1]
-// Y3(z^4) = tdata_o[0], X3(z^4) = tdata_i[0]
+// Y(z) = Y0(z^4) + z^-1 Y1(z^4) + z^-2 Y2(z^4) + z^-3Y3(z^4)
+// H(z) = P0(z^4) + z^-1 P1(z^4) + z^-2 P2(z^4) + z^-3P3(z^4)
+// X(z) = X0(z^4) + z^-1 X1(z^4) + z^-2 X2(z^4) + z^-3X3(z^4)
+//
+// Each polyphase component is given as: (omitting the term z^4 for clarity)
+// * Y0 = P0 X0 + (z^-4){P3 X1 + P2 X2 + P1 X3}
+// * Y1 = P1 X0 + P0 X1 + (z^-4){P3 X2 + P2 X3}
+// * Y2 = P2 X0 + P1 X1 + P0 X2 + (z^-4)P3 X3
+// * Y3 = P3 X0 + P2 X1 + P1 X2 + P0 X3
+//
+// only 2 output are computed per clock cycle - the other are not computed because they are discarded by the decimation process
+//
+// Y0(z^4) = ... y(0), y(4) ... = tdata_o[0], X0(z^4) = ... x(0), x(4), .... = tdata_i[0]
+// Y1(z^4) = ... y(1), y(5) ... = tdata_o[1], X1(z^4) = ... x(1), x(5), .... = tdata_i[1]
+// Y2(z^4) = ... y(2), y(6) ... = tdata_o[2], X2(z^4) = ... x(2), x(6), .... = tdata_i[2]
+// Y3(z^4) = ... y(3), y(7) ... = tdata_o[3], X3(z^4) = ... x(3), x(7), .... = tdata_i[3]
 // ---------------------------------------------------------------------------------------------
+
 void dec2_ssr4(bool tvalid_i, cdata_vec_t<4> tdata_i, bool &tvalid_o, cdata_vec_t<4> &tdata_o)
 {
 
 #pragma HLS INLINE off
 
     constexpr unsigned int num_coef = 8;
-    // CHECK: polyphase decomposition coefficients
     // polyphase decomposition coefficients
-    const coef_int_t coeff_vec0[num_coef] = {-197, -1087, -3723, -12793, 41339, 6596, 2079, 501};
-    const coef_int_t coeff_vec1[num_coef] = {0, 0, 0, 0, 0, 0, 0, 0};
-    const coef_int_t coeff_vec2[num_coef] = {501, 2079, 6596, 41339, -12793, -3723, -1087, -197};
-    const coef_int_t coeff_vec3[num_coef] = {0, 0, 0, 65536, 0, 0, 0, 0};
+    const coef_int_t coeff_vec0[num_coef] = {-197, -1087, -3723, -12793, 41339, 6596,  2079,   501};
+    const coef_int_t coeff_vec1[num_coef] = {   0,     0,     0,     0,      0,    0,     0,     0};
+    const coef_int_t coeff_vec2[num_coef] = {  501, 2079,  6596, 41339, -12793, -3723, -1087,  -197};
+    const coef_int_t coeff_vec3[num_coef] = {    0,    0,     0, 65536,      0,     0,     0,     0};
+
+    constexpr unsigned int latency_phase_combiner = 1;
+    constexpr unsigned int latency = num_coef + latency_phase_combiner;
 
     // shift registers to align valid to the module output (consider if 1 extra clock is needed for the final sum)
-    static ap_shift_reg<bool, (num_coef + 1)> vld_shftreg;
+    static ap_shift_reg<bool, latency> vld_shftreg;
 
     // ---------------------------------------------
     // control the shift register of the mac engine
@@ -280,35 +288,65 @@ void dec2_ssr4(bool tvalid_i, cdata_vec_t<4> tdata_i, bool &tvalid_o, cdata_vec_
     bool tvalid_v = (tvalid_i && !skip);
 
     // align the valid signal to the output
-    tvalid_o = vld_shftreg.shift(tvalid_v, num_coef + 1 - 1);
+    tvalid_o = vld_shftreg.shift(tvalid_v, latency - 1);
 
     // input sample
     cdata_t tdata_vi[4];
-    // X0(z^4):  x(n), x(n-4), x(n-8), ....
-    tdata_vi[0].re = tdata_i.re[3];
-    tdata_vi[0].im = tdata_i.im[3];
-    // X1(z^4): x(n-1), x(n-5), x(n-9), ....
-    tdata_vi[1].re = tdata_i.re[2];
-    tdata_vi[1].im = tdata_i.im[2];
-    // X2(z^4): x(n-2), x(n-6), x(n-10), ....
-    tdata_vi[2].re = tdata_i.re[1];
-    tdata_vi[2].im = tdata_i.im[1];
-    // X3(z^4): x(n-3), x(n-7), x(n-11), ....
-    tdata_vi[3].re = tdata_i.re[0];
-    tdata_vi[3].im = tdata_i.im[0];
+
+    for (int i = 0; i < 4; ++i)
+#pragma HLS UNROLL
+    {
+        tdata_vi[i].re = tdata_i.re[i];
+        tdata_vi[i].im = tdata_i.im[i];
+    }
+
+    cacc_t acc[4];
+
+    // compute tdata_o[0] = Y0(z^4) = P0 X0 + (z^-4){P3 X1 + P2 X2 + P1 X3}
+    cacc_t acc0[4];
+    acc0[0] = multi_mac_systolic<0, num_coef>(toshift_v, tdata_vi[0], coeff_vec0); // P0(z^4) X0(z^4)
+    acc0[1] = multi_mac_systolic<1, num_coef>(toshift_v, tdata_vi[1], coeff_vec3); // P3(z^4) X1(z^4)
+    acc0[2] = multi_mac_systolic<2, num_coef>(toshift_v, tdata_vi[2], coeff_vec2); // P2(z^4) X2(z^4)
+    acc0[3] = multi_mac_systolic<3, num_coef>(toshift_v, tdata_vi[3], coeff_vec1); // P1(z^4) X3(z^4)
+
+    acc[0] = phase_combiner<0, 4, 1, 3>(acc0);
+
+    // compute tdata_o[2] = Y2(z^4) = P2 X0 + P1 X1 + P0 X2 + (z^-4){P3 X3}
+    cacc_t acc2[4];
+    acc2[0] = multi_mac_systolic<8, num_coef>(toshift_v, tdata_vi[0], coeff_vec2); // P2(z^4) X0(z^4)
+    acc2[1] = multi_mac_systolic<9, num_coef>(toshift_v, tdata_vi[1], coeff_vec1); // P1(z^4) X1(z^4)
+    acc2[2] = multi_mac_systolic<10, num_coef>(toshift_v, tdata_vi[2], coeff_vec0); // P0(z^4) X2(z^4)
+    acc2[3] = multi_mac_systolic<11, num_coef>(toshift_v, tdata_vi[3], coeff_vec3); // P3(z^4) X3(z^4)
+
+    acc[2] = phase_combiner<2, 4, 3, 1>(acc2);
+
+    for (int i = 0; i < 2; ++i)
+    {
+        tdata_o.re[i] = acc[2*i].re;
+        tdata_o.im[i] = acc[2*i].im;
+        tdata_i.re[i+2] = 0;
+        tdata_i.im[i+2] = 0;
+    }
+
 };
 
 // ---------------------------------------------------------------------------------------------
 // dec2_ssr2: 320 -> 160 ( overal decimation factor = 8, SSR = 2)
 // 2 inputs per clock cycle are processed in parallel using polyphase decomposition
-// Y(z) = Y0(z^2) + z^-1 Y1(z^2), where:
-// * Y0(z^2) = P0(z^2) X0(z^2) + (z^-2)P1(z^2) X1(z^2)
-// * Y1(z^2) = P1(z^2) X0(z^2) +       P0(z^2) X1(z^2)
+//
+// Y(z) = Y0(z^2) + z^-1 Y1(z^2)
+// H(z) = P0(z^2) + z^-1 P1(z^2)
+// X(z) = X0(z^2) + z^-1 X1(z^2)
+//
+// Each polyphase component is given as: (omitting the term z^2 for clarity)
+// * Y0 = P0 X0 + (z^-2)P1 X1
+// * Y1 = P1 X0 + P0 X1
+//
 // only 1 output is computed per clock cycle - the other is not computed because it needs to be discarded,
 // since the decimation factor is 2
 //
-// Y0(z^2) = tdata_o[1], X0(z^2) = tdata_i[1]
-// Y1(z^2) = tdata_o[0], X1(z^2) = tdata_i[0]
+// Y0(z^2) = ... y(0), y(2), y(4), y(6), ... = tdata_o[0], X0(z^2) = ... x(0), x(2), x(4), x(6), ... = tdata_i[0]
+// Y1(z^2) = ... y(1), y(3), y(5), y(7), ... = tdata_o[1], X1(z^2) = ... x(1), x(3), x(5), x(7), ... = tdata_i[1]
 // ---------------------------------------------------------------------------------------------
 void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_t<2> &tdata_o)
 {
@@ -320,8 +358,11 @@ void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_
     const coef_int_t coeff_vec0[num_coef] = {-197, 501, -1087, 2079, -3723, 6596, -12793, 41339, 41339, -12793, 6596, -3723, 2079, -1087, 501, -197};
     const coef_int_t coeff_vec1[num_coef] = {0, 0, 0, 0, 0, 0, 0, 65536, 0, 0, 0, 0, 0, 0, 0, 0};
 
+    constexpr unsigned int latency_phase_combiner = 1;
+    constexpr unsigned int latency = num_coef + latency_phase_combiner;
+
     // shift registers to align valid to the module output (consider if 1 extra clock is needed for the final sum)
-    static ap_shift_reg<bool, (num_coef + 1)> vld_shftreg;
+    static ap_shift_reg<bool, (latency)> vld_shftreg;
 
     // ---------------------------------------------
     // control the shift register of the mac engine
@@ -333,43 +374,33 @@ void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_
     bool tvalid_v = (tvalid_i && !skip);
 
     // align the valid signal to the output
-    tvalid_o = vld_shftreg.shift(tvalid_v, num_coef + 1 - 1);
+    tvalid_o = vld_shftreg.shift(tvalid_v, latency - 1);
 
     // input sample
     cdata_t tdata_vi[2];
-    // X0(z^2):  x(n), x(n-2), x(n-4), ....
-    tdata_vi[0].re = tdata_i.re[1];
-    tdata_vi[0].im = tdata_i.im[1];
-    // X1(z^2): x(n-1), x(n-3), x(n-5), ....
-    tdata_vi[1].re = tdata_i.re[0];
-    tdata_vi[1].im = tdata_i.im[0];
+    
+    for (int i = 0; i < 2; ++i)
+#pragma HLS UNROLL
+    {
+        tdata_vi[i].re = tdata_i.re[i];
+        tdata_vi[i].im = tdata_i.im[i];
+    }
 
-    // compute the output Y1(z^2) = P1(z^2) X0(z^2) + P0(z^2) X1(z^2)
-    cacc_t acc0 = multi_mac_systolic<8, num_coef>(toshift_v, tdata_vi[0], coeff_vec1); // P1(z^2) X0(z^2)
-    cacc_t acc1 = multi_mac_systolic<9, num_coef>(toshift_v, tdata_vi[1], coeff_vec0); // P0(z^2) X1(z^2)
+    cacc_t acc[2];
 
-    // output sample - sum and cast to the output data type
-    cacc_t acc = {acc0.re + acc1.re, acc0.im + acc1.im};
+    // compute tdata_o[0] = Y0(z^2) = P0 X0 + (z^-2)P1 X1
+    cacc_t acc0[2];
+    acc0[0] = multi_mac_systolic<0, num_coef>(toshift_v, tdata_vi[0], coeff_vec0); // P0(z^2) X0(z^2)
+    acc0[1] = multi_mac_systolic<1, num_coef>(toshift_v, tdata_vi[1], coeff_vec1); // P1(z^2) X1(z^2)
 
-    tdata_o.re[0] = acc.re;
-    tdata_o.im[0] = acc.im;
+    acc[0] = phase_combiner<0, 2, 1, 1>(acc0);
 
-#ifdef _DEBUG_
-    // DEBUG:  compute the ouput  Y0(z^2) = P0(z^2) X0(z^2) + (z^-2)P1(z^2) X1(z^2)
-    cacc_t acc2 = multi_mac_systolic<10, num_coef>(toshift_v, tdata_vi[0], coeff_vec0); // P0(z^2) X0(z^2)
-    cacc_t acc3 = multi_mac_systolic<11, num_coef>(toshift_v, tdata_vi[1], coeff_vec1); // P1(z^2) X1(z^2)
 
-    // phase combiner adds one clock cycle of latency - delay tdata_o[0] by one clock cycle
-    cacc_t acc_dbg = phase_combiner_2<2>(acc2, acc3);
-
-    tdata_o.re[1] = acc_dbg.re;
-    tdata_o.im[1] = acc_dbg.im;
-#else
-
+    tdata_o.re[0] = acc[0].re;
+    tdata_o.im[0] = acc[0].im;
     tdata_o.re[1] = 0;
     tdata_o.im[1] = 0;
 
-#endif
 }
 
 template <int instance_id>
