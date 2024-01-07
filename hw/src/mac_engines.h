@@ -148,36 +148,28 @@ cacc_t phase_combiner_2(cacc_t ph0, cacc_t ph1)
 template <int instance_id, int N, int N1, int N2>
 cacc_t phase_combiner(cacc_t ph[N])
 {
-    // shift registers for input data
-    static cacc_t x_r0[N1][1];
-    static cacc_t x_r1[N2][2];
+   
+    cacc_t pacc = {0, 0};
+    static cacc_t pacc_r;
 
     cacc_t acc = {0, 0};
 
-
     // combiner
+    acc = pacc_r;
     for (int i = 0; i < N1; i++)
     {
-      acc.re += x_r0[i][0].re;
-      acc.im += x_r0[i][0].im;
-    }
-    for (int i = 0; i < N2; i++)
-    {
-      acc.re += x_r1[i][1].re;
-      acc.im += x_r1[i][1].im;
+      acc.re += ph[i].re;
+      acc.im += ph[i].im;
     }
 
-    // delay line alignment
-    for (int i = 0; i < N1; i++)
-    {
-      x_r0[i][0] = ph[i];
-    }
     for (int i = 0; i < N2; i++)
     {
-      x_r1[i][0] = ph[i + N1];
-      x_r1[i][1] = x_r1[i][0];
+        pacc.re += ph[i + N1].re;
+        pacc.im += ph[i + N1].im;
     }
-    
+
+    pacc_r = pacc;
+
     return acc;
 }
 

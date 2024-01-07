@@ -19,7 +19,7 @@
 // C++ class (ap_shift_reg) to ensure that the shift register defined in the C code is always implemented using an SRL resource
 #include "ap_shift_reg.h"
 
-#define _DEBUG_ 
+//#define _DEBUG_ 
 
 // decimation factor data type:
 typedef ap_uint<8> dec_factor_t;
