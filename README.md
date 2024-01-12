@@ -1,23 +1,20 @@
 # ssr-multistage-decimator
-Hardware design and FPGA-based implementation of a super sample rate multistage decimator using AMD Vivado Design Suite
+Hardware design and FPGA-based implementation of a super sample rate multistage decimator using Vitis High-Level Synthesis. The HLS component is synthesized from C++ functions into RTL code for implementation in the programmable logic (PL) region of a Versal Adaptive SoC , Zynq MPSoC, or AMD FPGA device. The generated RTL code is exported as a packaged IP for use in the Vivado Design Suite.
+
+## Super-Sample Rate Filters
+
+When the required sample frequency is greater than the clock frequency, the filter must be designed to accept multiple input samples and to compute multiple parallel output samples every clock cycle. The number of parallel samples is determined by calculating the ratio of between the sample frequency and clock frequency.
 
 ## Directory Structure
 
 - `doc/`: Documentation files and design specifications.
 - `hw/`: Hardware design sources including source code, IPs, and constraints.
-  - `src/`: VHDL or Verilog source files for the FPGA design.
+  - `src/`: C++ source files for the HLS design.
   - `tb/`: Testbench files
-  - `ip/`: Custom and third-party IP cores used in the design.
-  - `constraints/`: Constraint files for synthesis and implementation.
-    - `synthesis/`: Constraints specific to synthesis.
-    - `implementation/`: Constraints specific to implementation.
 - `matlab/`: MATLAB models and scripts for signal generation and verification
-- `data/`: Input signals and simulation outptuts
+- `data/`: Input signals and simulation outputs
 - `scripts/`: Automation scripts like TCL scripts, Makefiles, etc.
-  - `build/`: Scripts used for compiling and building the project.
-  - `utils/`: Utility scripts for various tasks.
-- `xdc/`: Xilinx Design Constraints files.
-- `proj/`: Vivado project files including `.xpr`, `.runs`, `.srcs`, etc.
+- `prj_ssr_multistage_decimator/`: Vitis HLS project
 - `output/`: Generated output products like bitstreams, reports, logs, etc.
 
 ## Signal Processing Details
@@ -59,8 +56,45 @@ Select the appropriate decimation factor based on the input signal bandwidth, ac
 | 31.25           | 32         | 15.625  | 24    |
 | 15.625          | 64         | 7.8125  | 12    |
 
+## Hardware Architecture
 
-To improve readability and apply the correct format for a README.md file, we will structure the information under appropriate headings, include a brief description, usage instructions, pre-requisites if any, and a proper command format. Here's an example of how you could lay out the README content:
+The ssr_multistage_decimator is implemented as a cascade of half-band decimator-by-2 filters.
+
+| Stage      | Input Rate | Output Rate | Decimation Factor | SSR |
+|------------|------------|-------------|-------------------|-----|
+| dec2_ssr8  | 1280       | 640         | 2                 | 8   |
+| dec2_ssr4  | 640        | 320         | 4                 | 4   |
+| dec2_ssr2  | 320        | 160         | 8                 | 2   |
+| dec2       | 160        | 80          | 16                | 1   |
+| dec2       | 80         | 40          | 32                | 1   |
+| dec2       | 40         | 20          | 64                | 1   |
+
+The first 3 stages are Super-Sample Rate (SSR) filters, designed to process multiple samples per clock cycle, which is required by the very high input sampling rate.
+
+### Polyphase Decomposition
+
+The parallel processing capability of these SSR filters is achieved through a technique known as polyphase decomposition. In polyphase decomposition, the filter is divided into several sub-filters, each processing a different set of samples. This allows the system to handle multiple samples simultaneously, effectively increasing the processing speed.
+
+The diagram below illustrate how the input X(z) is decomposed into its polyphase components and then processed through the polyphase filters P0 and P1 to produce the output Y(z), for the case of SSR = 2.
+
+![Alt text](image.png)
+
+- `X(z)` is the Z-transform of the input signal, which is decomposed into two components: `X0(z^2)` and `z^-1*X1(z^2)`.
+- These components are fed into two polyphase filters: `P0` and `P1`.
+- The outputs of these filters are then combined to form `Y0` and `Y1`.
+  - `Y0` is calculated as `P0*X0 + z^-2*P1*X1`.
+  - `Y1` is calculated as `P1*X0 + P0*X1`.
+- Finally, `Y(z)` is the sum of `Y0` and `z^-1*Y1`, representing the output of the polyphase decomposition.
+
+### Systolic Multiply-Accumulate Architecture
+
+The implementation of these filters on an FPGA is based on a systolic Multiply-Accumulate (MAC) architecture. The MMAC processing units are connected in a chain and implement a pipelined Direct-Form filters. The architecture is directly supported by the DSP Slice and results in area-efficient and high performance filter implementations.
+
+## Interface
+
+## Integration Guidelines
+
+## Implementation Results
 
 ## Simulation
 

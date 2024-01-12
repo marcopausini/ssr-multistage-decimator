@@ -25,7 +25,6 @@
 typedef ap_uint<8> dec_factor_t;
 
 // fixed point data type:
-//constexpr unsigned int num_coefficients = 31;
 constexpr int coef_bits = 18;
 constexpr int coef_fractional_bits = 17;
 constexpr int coef_integer_bits = coef_bits - coef_fractional_bits;
