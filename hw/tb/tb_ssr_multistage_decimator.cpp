@@ -153,7 +153,7 @@ int main(void)
 
     // counters
     int watchdogCounter = 0;
-    int tapDelayLineCounter = 100; // to be checked
+    int tapDelayLineCounter = 160; // to be checked
     int watchdogLimit = 10000;
 
     // --------------------------------
