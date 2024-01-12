@@ -16,7 +16,7 @@
 ##
 
 set CSYNTH 1
-set EXPORT 0
+set EXPORT 1
 
 ### default setting
 set Project     prj_ssr_multistage_decimator
