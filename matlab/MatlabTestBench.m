@@ -146,7 +146,7 @@ methods (Access = private)
         elseif strcmp(obj.SignalType, 'random')
             obj.NumOutputSamples = 64;
         elseif strcmp(obj.SignalType, 'impulse')
-            obj.NumOutputSamples = 16;
+            obj.NumOutputSamples = 64;
         end
         obj.NumInputSamples = obj.NumOutputSamples * obj.DecimFactor;
         obj.SignalDuration = obj.NumInputSamples / obj.InputSampleRate;
@@ -234,17 +234,24 @@ methods (Access = private)
                 % convert to fixed point
                 output = convertToFxpnt(output, 's', obj.dataout_t.w, obj.dataout_t.f);
             case 'convolution'
+                phase = 1;
                 d = obj.DecimFactor;
                 if d == 1
                     output = obj.Input; % No need to convolve
                 elseif d == 2
+                    N = length(obj.Input);
                     output = conv(obj.Input, obj.Filter.Numerator); % Convolve with main Numerator
+                    output = output(1:N); % Truncate to input length
+                    output = output(phase:2:end); % Decimate by 2
                     output = convertToFxpnt(output, 's', obj.dataout_t.w, obj.dataout_t.f);
                 else
                     output = obj.Input;
                     for stage = 1:log2(d)
+                        N = length(output);
                         fieldName = sprintf('Stage%d', stage);
                         output = conv(output, obj.Filter.(fieldName).Numerator);
+                        output = output(1:N);
+                        output = output(phase:2:end);
                         output = convertToFxpnt(output, 's', obj.dataout_t.w, obj.dataout_t.f);
                     end
                 end

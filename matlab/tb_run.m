@@ -40,18 +40,18 @@ while ~validDecimationFactor
 end
 
 % Allowed values for signal type
-allowedSignalTypes = [1, 2];
-signalTypes = {'exponential', 'chirp'};
+allowedSignalTypes = [1, 2, 3];
+signalTypes = {'complex_exp', 'chirp', 'impulse'};
 
 % Continue asking until a valid signal type is given
 validSignalType = false;
 while ~validSignalType
-    idx = input('Enter signal type (1 for exponential tone, 2 for chirp): ');
+    idx = input('Enter signal type (1 for complex exponential, 2 for chirp, 3 for impulse): ');
     
     if any(idx == allowedSignalTypes)
         validSignalType = true;
     else
-        fprintf('Invalid signal type. Please enter 1 for exponential tone or 2 for chirp.\n');
+        fprintf('Invalid signal type. Please enter 1 for complex exponential, 2 for chirp or 3 for impulse.\n');
     end
 end
 
