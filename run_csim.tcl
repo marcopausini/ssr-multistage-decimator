@@ -13,10 +13,10 @@
 ##
 
 # open project and keep/remove any exisiting data
-set resetProject true
+set resetProject false
 
 set CSIM true
-set COSIM false
+set COSIM true
 
 # choose single or multi test case
 set selection "single"
@@ -33,17 +33,17 @@ set solutionName    solution_0
 proc setTestcases { selection } {
     switch -exact -- $selection {
         "single" {
-            return [list testcase_decim_8_signal_exponential]
+            return [list testcase_decim_64_signal_complex_exp]
         }
         "multi" {
             return [list \
-                testcase_decim_1_signal_exponential \
-                testcase_decim_2_signal_exponential \
-                testcase_decim_4_signal_exponential \
-                testcase_decim_8_signal_exponential \
-                testcase_decim_16_signal_exponential \
-                testcase_decim_32_signal_exponential \
-                testcase_decim_64_signal_exponential \
+                testcase_decim_1_signal_complex_exp \
+                testcase_decim_2_signal_complex_exp \
+                testcase_decim_4_signal_complex_exp \
+                testcase_decim_8_signal_complex_exp \
+                testcase_decim_16_signal_complex_exp \
+                testcase_decim_32_signal_complex_exp \
+                testcase_decim_64_signal_complex_exp \
             ]
     }
     default {
