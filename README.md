@@ -80,25 +80,23 @@ The diagram below illustrate how the input X(z) is decomposed into its polyphase
 ![Alt text](image.png)
 
 - `X(z)` is the Z-transform of the input signal, which is decomposed into two components: `X0(z^2)` and `z^-1*X1(z^2)`.
-- These components are fed into two polyphase filters: `P0` and `P1`.
-- The outputs of these filters are then combined to form `Y0` and `Y1`.
-  - `Y0` is calculated as `P0*X0 + z^-2*P1*X1`.
-  - `Y1` is calculated as `P1*X0 + P0*X1`.
-- Finally, `Y(z)` is the sum of `Y0` and `z^-1*Y1`, representing the output of the polyphase decomposition.
+- These components are fed into two polyphase filters: `P0(z^2)` and `P1(z^2)`.
+- The outputs of these filters are then combined to form `Y0(z^2)` and `Y1(z^2)`.
+  - `Y0(z^2)` is calculated as `P0(x^2)*X0(z^2) + z^-2*P1(z^2)*X1(z^2)`.
+  - `Y1(z^2)` is calculated as `P1(z^2)*X0(z^2) + P0(z^2)*X1(z^2)`.
+- Finally, `Y(z)` is the sum of `Y0(z^2)` and `z^-1*Y1(z^2)`, representing the output of the polyphase decomposition.
 
 The polyphase decomposition for SSR = 4 is given as:
-$$
-Y_0 = P_0X_0 + (z^{-4})(P_3X_1 + P_2X_2 + P_1X_3)
-$$
-$$
-Y_1 = P_1X_0 + P_0X_1 + (z^{-4})(P_3X_2 + P_2X_3)
-$$
-$$
-Y_2 = P_2X_0 + P_1X_1 + P_0X_2 + (z^{-4})P_3X_3
-$$
-$$
-Y_3 = P_3X_0 + P_2X_1 + P_1X_2 + P_0X_3
-$$
+
+- `X(z) = X0(z^4) + z^-1 X1(z^4) + z^-2 X2(z^4) + z^-3X3(z^4)`
+- `Y(z) = Y0(z^4) + z^-1 Y1(z^4) + z^-2 Y2(z^4) + z^-3Y3(z^4)`
+
+and each polyphase component is given as
+
+- `Y0(z^4) = P0(z^4) X0(z^4) + (z^-4){P3(z^4) X1(z^4) + P2(z^4) X2(z^4) + P1(z^4) X3(z^4)}`
+- `Y1(z^4) = P1(z^4) X0(z^4) + P0(z^4) X1(z^4) + (z^-4){P3(z^4) X2(z^4) + P2(z^4) X3(z^4)}`
+- `Y2(z^4) = P2(z^4) X0(z^4) + P1(z^4) X1(z^4) + P0(z^4) X2(z^4) + (z^-4)P3(z^4) X3(z^4)`
+- `Y3(z^4) = P3(z^4) X0(z^4) + P2(z^4) X1(z^4) + P1(z^4) X2(z^4) + P0(z^4) X3(z^4)`
 
 The polyphase strucvture for SSR = 8 is described in the source file `dec_filters.h`
 
