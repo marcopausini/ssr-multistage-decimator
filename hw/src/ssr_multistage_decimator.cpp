@@ -86,8 +86,6 @@ void copy_data(cdatain_vec_t<ssr> &tdata_i, cdataout_vec_t<ssr> &tdata_o)
 void ssr_multistage_decimator(dec_factor_t dec_factor, bool tvalid_i, cdatain_vec_t<ssr> tdata_i, bool &tvalid_o, cdataout_vec_t<ssr> &tdata_o)
 {
 
-//  add pragams for the decimation factor
-#pragma HLS INTERFACE s_axilite port = dec_factor bundle = control
 
     // ----------------------------------------------------
     // first filter stage (decimation factor = 2)

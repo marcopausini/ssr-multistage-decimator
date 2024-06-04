@@ -70,6 +70,7 @@ set_clock_uncertainty $Uncertainty
 
 # IO interface
 set_directive_interface -mode ap_ctrl_none ssr_multistage_decimator
+set_directive_interface -mode ap_none ssr_multistage_decimator dec_factor
 set_directive_interface -mode ap_none ssr_multistage_decimator tvalid_i
 set_directive_interface -mode ap_none ssr_multistage_decimator tdata_i
 set_directive_interface -mode ap_none ssr_multistage_decimator tvalid_o
