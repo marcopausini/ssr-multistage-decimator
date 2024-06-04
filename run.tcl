@@ -16,11 +16,11 @@
 ##
 
 set CSYNTH 1
-set EXPORT 1
+set EXPORT 0
 
 ### default setting
 set Project     prj_ssr_multistage_decimator
-set Solution    solution_0
+set Solution    solution_1
 set Device      "xczu28dr-ffvg1517-2-e"
 set Flow        ""
 set ClockFreq   160       ;# Set the desired clock frequency in MHz
@@ -78,12 +78,9 @@ set_directive_interface -mode ap_none ssr_multistage_decimator tdata_o
 
 # The function has a pipelined architecture and accepts new inputs every clock cycle
 set_directive_pipeline -II 1  ssr_multistage_decimator
+# Inline the functions for highest performance
+set_directive_inline -recursive ssr_multistage_decimator
 
-
-# Inform the tool of the variables not inter dependent
-
-# Print scheduling information for debugging
-config_schedule -verbose
 
 #################
 # C SIMULATION
