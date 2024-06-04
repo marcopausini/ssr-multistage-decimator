@@ -62,7 +62,7 @@
 void dec2_ssr8(bool tvalid_i, cdatain_vec_t<8> tdata_i, bool &tvalid_o, cdata_vec_t<8> &tdata_o)
 {
 
-#pragma HLS INLINE off
+//#pragma HLS INLINE off
 
     constexpr unsigned int num_coef = 4;
     const coef_int_t coeff_vec[8][num_coef] = {
@@ -263,7 +263,7 @@ void dec2_ssr8(bool tvalid_i, cdatain_vec_t<8> tdata_i, bool &tvalid_o, cdata_ve
 void dec2_ssr4(bool tvalid_i, cdata_vec_t<4> tdata_i, bool &tvalid_o, cdata_vec_t<4> &tdata_o)
 {
 
-#pragma HLS INLINE off
+//#pragma HLS INLINE off
 
     constexpr unsigned int num_coef = 8;
     // polyphase decomposition coefficients
@@ -351,7 +351,7 @@ void dec2_ssr4(bool tvalid_i, cdata_vec_t<4> tdata_i, bool &tvalid_o, cdata_vec_
 void dec2_ssr2(bool tvalid_i, cdata_vec_t<2> tdata_i, bool &tvalid_o, cdata_vec_t<2> &tdata_o)
 {
 
-#pragma HLS INLINE off
+//#pragma HLS INLINE off
 
     constexpr unsigned int num_coef = 16;
     // polyphase decomposition coefficients
@@ -407,7 +407,7 @@ template <int instance_id>
 void dec2_ssr1(bool tvalid_i, cdata_vec_t<1> tdata_i, bool &tvalid_o, cdata_vec_t<1> &tdata_o)
 {
 
-#pragma HLS INLINE off
+//#pragma HLS INLINE off
 
     constexpr unsigned int num_coef = 31;
     // prototype filter coefficients
@@ -455,7 +455,7 @@ template <int instance_id>
 void hbf(bool tvalid_i, cdata_vec_t<1> tdata_i, bool &tvalid_o, cdata_vec_t<1> &tdata_o)
 {
 
-#pragma HLS INLINE off
+//#pragma HLS INLINE off
 
     constexpr unsigned int num_coef = 31;
     // prototype filter coefficients

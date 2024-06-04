@@ -65,7 +65,7 @@ template <int instance_id, int num_coef>
 cacc_t multi_mac_systolic(bool toshift_i, cdata_t x_i, const coef_int_t coef_vec[num_coef])
 {
 
-#pragma HLS INLINE off
+//#pragma HLS INLINE off
 
     // shift register for input data
     static cdata_t data_sreg[num_coef];
